@@ -2,7 +2,7 @@
 
 ## Opis projekta
 
-EventFlow je spletna aplikacija, namenjena enostavnejši organizaciji dogodkov in upravljanju prijav nanje. Obiskovalcem omogoča pregledovanje in filtriranje objavljenih dogodkov, registriranim uporabnikom pa prijavo na izbrane dogodke, spremljanje statusa prijave in njeno odpoved. Organizacije lahko prek aplikacije ustvarjajo, objavljajo in upravljajo svoje dogodke ter spremljajo prijave udeležencev. Ko je doseženo največje dovoljeno število udeležencev, aplikacija omogoča vodenje čakalnega seznama, na katerega se lahko uvrstijo dodatni prijavljeni.
+EventFlow je spletna aplikacija, namenjena enostavnejši organizaciji dogodkov ter preglednemu upravljanju dogodkov in prijav udeležencev na enem mestu. Obiskovalcem omogoča pregledovanje in filtriranje objavljenih dogodkov, registriranim uporabnikom pa prijavo na izbrane dogodke, spremljanje statusa prijave in njeno odpoved. Organizacije lahko prek aplikacije ustvarjajo, objavljajo in upravljajo svoje dogodke ter spremljajo prijave udeležencev. Če je dogodek že zapolnjen, se lahko novi prijavljeni uvrstijo na čakalni seznam in počakajo na sprostitev prostega mesta.
 
 ## Uporabljene tehnologije
 
