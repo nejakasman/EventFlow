@@ -37,6 +37,8 @@ async function authenticateToken(req, res, next) {
       id: payload.sub,
       email: payload.email,
       username: payload.preferred_username,
+      firstName: payload.given_name,
+      lastName: payload.family_name,
       roles: payload.realm_access?.roles || []
     };
 
