@@ -159,8 +159,18 @@ http://localhost:5173
 
 **Backend:**
 
-```bash
+Pred prvim zagonom v mapi `backend` ustvarimo datoteko `.env` iz predloge:
+
+\```bash
 cd backend
+cp .env.example .env
+\```
+
+Datoteka vsebuje naslov Keycloak realma, ki ga backend uporablja za preverjanje JWT žetonov.
+
+Backend zaženemo z ukazoma:
+
+```bash
 npm install
 npm run dev
 ```
