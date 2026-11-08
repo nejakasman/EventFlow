@@ -726,6 +726,81 @@ app.get(
   }
 );
 
+
+app.get(
+  "/api/events/:id/registrations",
+  authenticateToken,
+  requireRole("ORGANIZER"),
+  async (req, res) => {
+    const eventId = Number(req.params.id);
+
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return res.status(400).json({
+        message: "Neveljaven ID dogodka."
+      });
+    }
+
+    try {
+      const eventResult = await pool.query(
+        `SELECT id, title, location, organization_keycloak_id
+         FROM events
+         WHERE id = $1
+           AND organization_keycloak_id = $2`,
+        [eventId, req.user.id]
+      );
+
+      if (eventResult.rows.length === 0) {
+        return res.status(404).json({
+          message: "Dogodek ne obstaja ali pa ga niste ustvarili vi."
+        });
+      }
+
+      const registrationsResult = await pool.query(
+        `SELECT
+          r.id AS registration_id,
+          r.status AS registration_status,
+          r.created_at AS registration_date,
+          u.keycloak_id AS user_keycloak_id,
+          u.first_name,
+          u.last_name,
+          u.email
+         FROM registrations r
+         JOIN users u
+           ON r.user_keycloak_id = u.keycloak_id
+         WHERE r.event_id = $1
+         ORDER BY r.created_at ASC`,
+        [eventId]
+      );
+
+      const countResult = await pool.query(
+        `SELECT
+          COUNT(*) FILTER (WHERE status = 'CONFIRMED')::integer
+            AS confirmed_count,
+          COUNT(*) FILTER (WHERE status = 'WAITLISTED')::integer
+            AS waitlisted_count,
+          COUNT(*) FILTER (WHERE status = 'CANCELLED')::integer
+            AS cancelled_count
+         FROM registrations
+         WHERE event_id = $1`,
+        [eventId]
+      );
+
+      return res.status(200).json({
+        event: eventResult.rows[0],
+        registrations: registrationsResult.rows,
+        counts: countResult.rows[0]
+      });
+    } catch (error) {
+      console.error("Napaka pri pridobivanju prijav na dogodek:", error);
+
+      return res.status(500).json({
+        message: "Pri pridobivanju prijav na dogodek je prišlo do napake."
+      });
+    }
+  }
+);
+
+
 app.get(
   "/api/registrations/my",
   authenticateToken,

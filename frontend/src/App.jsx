@@ -39,6 +39,17 @@ function App() {
   const [eventsError, setEventsError] = useState(false)
   const [publishingEventId, setPublishingEventId] = useState(null)
 
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [eventRegistrations, setEventRegistrations] = useState([])
+  const [eventRegistrationCounts, setEventRegistrationCounts] = useState({
+    confirmed_count: 0,
+    waitlisted_count: 0,
+    cancelled_count: 0
+  })
+  const [eventRegistrationsLoading, setEventRegistrationsLoading] = useState(false)
+  const [eventRegistrationsMessage, setEventRegistrationsMessage] = useState('')
+  const [eventRegistrationsError, setEventRegistrationsError] = useState(false)
+
   const [myRegistrations, setMyRegistrations] = useState([])
   const [myRegistrationsLoading, setMyRegistrationsLoading] = useState(false)
   const [myRegistrationsMessage, setMyRegistrationsMessage] = useState('')
@@ -274,6 +285,65 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const loadEventRegistrations = async (event) => {
+    setEventRegistrationsLoading(true)
+    setEventRegistrationsMessage('')
+    setEventRegistrationsError(false)
+    setEventRegistrations([])
+    setEventRegistrationCounts({
+      confirmed_count: 0,
+      waitlisted_count: 0,
+      cancelled_count: 0
+    })
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events/${event.id}/registrations`,
+        {
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Pridobivanje prijav ni uspelo.'
+        )
+      }
+
+      setSelectedEvent(data.event || event)
+      setEventRegistrations(data.registrations || [])
+      setEventRegistrationCounts(data.counts || {
+        confirmed_count: 0,
+        waitlisted_count: 0,
+        cancelled_count: 0
+      })
+    } catch (error) {
+      setEventRegistrationsError(true)
+      setEventRegistrationsMessage(error.message)
+    } finally {
+      setEventRegistrationsLoading(false)
+    }
+  }
+
+  const handleOpenEventRegistrations = (event) => {
+    setSelectedEvent(event)
+    setOrganizerView('eventRegistrations')
+    setRegistrationView('closed')
+    loadEventRegistrations(event)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleOpenMyRegistrations = () => {
+    setOrganizerView('myRegistrations')
+    setRegistrationView('closed')
+    loadMyRegistrations()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const loadMyRegistrations = async () => {
     setMyRegistrationsLoading(true)
     setMyRegistrationsMessage('')
@@ -304,13 +374,6 @@ function App() {
     } finally {
       setMyRegistrationsLoading(false)
     }
-  }
-
-  const handleOpenMyRegistrations = () => {
-    setOrganizerView('myRegistrations')
-    setRegistrationView('closed')
-    loadMyRegistrations()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleCancelRegistration = async (registration) => {
@@ -600,7 +663,8 @@ function App() {
                 <>
                   <button
                     className={`button ${
-                      organizerView === 'myEvents'
+                      organizerView === 'myEvents' ||
+                      organizerView === 'eventRegistrations'
                         ? 'button-primary'
                         : 'button-outline'
                     }`}
@@ -677,12 +741,14 @@ function App() {
             organizerView === 'create' ||
             organizerView === 'myEvents' ||
             organizerView === 'myRegistrations' ||
+            organizerView === 'eventRegistrations' ||
             organizerView === 'discover'
               ? 'hero-registration'
               : ''
           } ${
             organizerView === 'myEvents' ||
-            organizerView === 'myRegistrations'
+            organizerView === 'myRegistrations' ||
+            organizerView === 'eventRegistrations'
               ? 'hero-my-events'
               : organizerView === 'discover'
                 ? 'hero-discover'
@@ -1166,6 +1232,138 @@ function App() {
                   ← Nazaj na začetno stran
                 </button>
               </div>
+            ) : organizerView === 'eventRegistrations' && isOrganizer ? (
+              <div className="my-events-panel event-registrations-panel">
+                <span className="section-label">PREGLED DOGODKA</span>
+
+                <h1>
+                  Prijave <span>udeležencev.</span>
+                </h1>
+
+                <p className="form-description">
+                  Pregled vseh udeležencev, ki so se prijavili na izbrani dogodek.
+                </p>
+
+                {selectedEvent && (
+                  <div className="event-registrations-heading">
+                    <h2>{selectedEvent.title}</h2>
+                    <p>{selectedEvent.location}</p>
+                  </div>
+                )}
+
+                {eventRegistrationsLoading ? (
+                  <div className="events-info">
+                    Nalaganje prijav ...
+                  </div>
+                ) : eventRegistrationsError ? (
+                  <div className="events-empty">
+                    <h2>Prijav ni bilo mogoče naložiti.</h2>
+                    <p>{eventRegistrationsMessage}</p>
+
+                    <button
+                      className="button button-primary"
+                      onClick={() =>
+                        selectedEvent && loadEventRegistrations(selectedEvent)
+                      }
+                    >
+                      Poskusi znova
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="registration-count-grid">
+                      <div className="registration-count-card">
+                        <span>Potrjene prijave</span>
+                        <strong>
+                          {eventRegistrationCounts.confirmed_count}
+                        </strong>
+                      </div>
+
+                      <div className="registration-count-card">
+                        <span>Čakalni seznam</span>
+                        <strong>
+                          {eventRegistrationCounts.waitlisted_count}
+                        </strong>
+                      </div>
+
+                      <div className="registration-count-card">
+                        <span>Odpovedane prijave</span>
+                        <strong>
+                          {eventRegistrationCounts.cancelled_count}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {eventRegistrations.length === 0 ? (
+                      <div className="events-empty">
+                        <div className="events-empty-icon">✳</div>
+                        <h2>Še ni prijavljenih udeležencev.</h2>
+                        <p>
+                          Ko se udeleženci prijavijo na dogodek, se bodo prikazali tukaj.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="event-registrations-list">
+                        {eventRegistrations.map(registration => (
+                          <article
+                            className="event-registration-card"
+                            key={registration.registration_id}
+                          >
+                            <div className="event-registration-person">
+                              <div className="event-registration-avatar">
+                                {registration.first_name?.charAt(0).toUpperCase()}
+                              </div>
+
+                              <div>
+                                <h3>
+                                  {registration.first_name} {registration.last_name}
+                                </h3>
+                                <p>{registration.email}</p>
+                              </div>
+                            </div>
+
+                            <div className="event-registration-details">
+                              <span className="event-detail-label">
+                                Datum prijave
+                              </span>
+                              <span>
+                                {formatDate(registration.registration_date)}
+                              </span>
+                            </div>
+
+                            <span
+                              className={`event-status ${
+                                registration.registration_status === 'CONFIRMED'
+                                  ? 'registration-status-confirmed'
+                                  : registration.registration_status === 'WAITLISTED'
+                                    ? 'registration-status-waitlisted'
+                                    : 'registration-status-cancelled'
+                              }`}
+                            >
+                              {registration.registration_status === 'CONFIRMED'
+                                ? 'Potrjena'
+                                : registration.registration_status === 'WAITLISTED'
+                                  ? 'Čakalni seznam'
+                                  : 'Odpovedana'}
+                            </span>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <button
+                  className="back-link"
+                  onClick={() => {
+                    setOrganizerView('myEvents')
+                    loadMyEvents()
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                >
+                  ← Nazaj na moje dogodke
+                </button>
+              </div>
             ) : organizerView === 'myEvents' && isOrganizer ? (
               <div className="my-events-panel">
                 <span className="section-label">ORGANIZACIJA</span>
@@ -1193,7 +1391,18 @@ function App() {
                   <div className="events-info">
                     Nalaganje dogodkov ...
                   </div>
-                ) : myEvents.length === 0 && !eventsError ? (
+                ) : eventsError ? (
+                  <div className="events-empty">
+                    <h2>Dogodkov ni bilo mogoče naložiti.</h2>
+                    <p>{eventsMessage}</p>
+                    <button
+                      className="button button-primary"
+                      onClick={loadMyEvents}
+                    >
+                      Poskusi znova
+                    </button>
+                  </div>
+                ) : myEvents.length === 0 ? (
                   <div className="events-empty">
                     <div className="events-empty-icon">✳</div>
                     <h2>Še nimaš dogodkov.</h2>
@@ -1278,6 +1487,13 @@ function App() {
                             <span>{event.max_participants}</span>
                           </div>
                         </div>
+
+                        <button
+                          className="button button-primary event-registrations-button"
+                          onClick={() => handleOpenEventRegistrations(event)}
+                        >
+                          Pregled prijav
+                        </button>
 
                         {event.status === 'DRAFT' && (
                           <button
