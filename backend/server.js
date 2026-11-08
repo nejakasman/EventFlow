@@ -742,7 +742,7 @@ app.get(
 
     try {
       const eventResult = await pool.query(
-        `SELECT id, title, organization_keycloak_id
+        `SELECT id, title, location, organization_keycloak_id
          FROM events
          WHERE id = $1
            AND organization_keycloak_id = $2`,

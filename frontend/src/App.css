@@ -1738,3 +1738,127 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Pregled prijav udeležencev */
+.event-registrations-panel {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.event-registrations-button {
+  align-self: flex-start;
+  margin-top: 20px;
+}
+
+.event-registrations-heading {
+  margin: 30px 0;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #ebe8f1;
+  border-radius: 16px;
+}
+
+.event-registrations-heading h2 {
+  margin: 0 0 8px;
+}
+
+.event-registrations-heading p {
+  margin: 0;
+  color: #777386;
+}
+
+.registration-count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.registration-count-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #ebe8f1;
+  border-radius: 16px;
+}
+
+.registration-count-card span {
+  color: #777386;
+  font-size: 14px;
+}
+
+.registration-count-card strong {
+  font-size: 30px;
+  color: #292536;
+}
+
+.event-registrations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-registration-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #ebe8f1;
+  border-radius: 16px;
+}
+
+.event-registration-person {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.event-registration-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #eee9f8;
+  color: #7558a6;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.event-registration-person h3 {
+  margin: 0 0 5px;
+  font-size: 16px;
+}
+
+.event-registration-person p {
+  margin: 0;
+  color: #777386;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.event-registration-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .registration-count-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-registration-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
