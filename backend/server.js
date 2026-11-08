@@ -247,6 +247,139 @@ app.post("/api/organizations/register", async (req, res) => {
 });
 
 
+app.post("/api/events", authenticateToken, requireRole("ORGANIZER"), async (req, res) => {
+    const {
+      title,
+      description,
+      location,
+      startDate,
+      endDate,
+      registrationDeadline,
+      maxParticipants,
+      categoryId
+    } = req.body;
+
+    if (
+      !title?.trim() ||
+      !location?.trim() ||
+      !startDate ||
+      !endDate ||
+      !registrationDeadline ||
+      maxParticipants === undefined ||
+      categoryId === undefined
+    ) {
+      return res.status(400).json({
+        message: "Izpolnite vsa obvezna polja."
+      });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const deadline = new Date(registrationDeadline);
+    const now = new Date();
+
+    if (
+      isNaN(start.getTime()) ||
+      isNaN(end.getTime()) ||
+      isNaN(deadline.getTime())
+    ) {
+      return res.status(400).json({
+        message: "Vnesite veljavne datume."
+      });
+    }
+
+    if (start <= now) {
+      return res.status(400).json({
+        message: "Datum začetka dogodka mora biti v prihodnosti."
+      });
+    }
+
+    if (end <= start) {
+      return res.status(400).json({
+        message: "Datum konca mora biti poznejši od začetka dogodka."
+      });
+    }
+
+    if (deadline <= now || deadline >= start) {
+      return res.status(400).json({
+        message: "Rok za prijavo mora biti v prihodnosti in pred začetkom dogodka."
+      });
+    }
+
+    const participants = Number(maxParticipants);
+    const category = Number(categoryId);
+
+    if (
+      !Number.isInteger(participants) ||
+      participants <= 0
+    ) {
+      return res.status(400).json({
+        message: "Največje število udeležencev mora biti pozitivno celo število."
+      });
+    }
+
+    if (!Number.isInteger(category) || category <= 0) {
+      return res.status(400).json({
+        message: "Izberite veljavno kategorijo."
+      });
+    }
+
+    try {
+      const categoryResult = await pool.query(
+        "SELECT id FROM categories WHERE id = $1",
+        [category]
+      );
+
+      if (categoryResult.rows.length === 0) {
+        return res.status(400).json({
+          message: "Izbrana kategorija ne obstaja."
+        });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO events (
+          title,
+          description,
+          location,
+          start_date,
+          end_date,
+          registration_deadline,
+          max_participants,
+          status,
+          organization_keycloak_id,
+          category_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'DRAFT', $8, $9)
+        RETURNING *`,
+        [
+          title.trim(),
+          description?.trim() || null,
+          location.trim(),
+          start,
+          end,
+          deadline,
+          participants,
+          req.user.id,
+          category
+        ]
+      );
+
+      return res.status(201).json({
+        message: "Dogodek je bil uspešno ustvarjen.",
+        event: result.rows[0]
+      });
+    } catch (error) {
+      console.error("Napaka pri ustvarjanju dogodka:", error);
+
+      return res.status(500).json({
+        message: "Pri ustvarjanju dogodka je prišlo do napake."
+      });
+    }
+  }
+);
+
+
+
 app.listen(PORT, () => {
   console.log(`EventFlow backend deluje na portu ${PORT}`);
 });

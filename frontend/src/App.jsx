@@ -1,37 +1,42 @@
-
 import keycloak from './keycloak'
 import './App.css'
 import React, { useEffect, useState } from 'react'
 
 function App() {
   const isAuthenticated = keycloak.authenticated
-  const [syncMessage, setSyncMessage] = useState('')
+
   const [registrationView, setRegistrationView] = useState('closed')
+  const [organizerView, setOrganizerView] = useState('home')
+
   const [organizationForm, setOrganizationForm] = useState({
     name: '',
     email: '',
     password: ''
   })
+
   const [registrationMessage, setRegistrationMessage] = useState('')
   const [registrationError, setRegistrationError] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    registrationDeadline: '',
+    maxParticipants: '',
+    categoryId: ''
+  })
+
+  const [eventMessage, setEventMessage] = useState('')
+  const [eventError, setEventError] = useState(false)
+
   const user = keycloak.tokenParsed
-  const roles = user?.realm_access?.roles || []
 
-  const appRoles = roles.includes('ADMIN')
-    ? ['ADMIN']
-    : roles.includes('ORGANIZER')
-      ? ['ORGANIZER']
-      : roles.includes('PARTICIPANT')
-        ? ['PARTICIPANT']
-        : []
-
-  const roleNames = {
-    PARTICIPANT: 'Udeleženec',
-    ORGANIZER: 'Organizator',
-    ADMIN: 'Administrator'
-  }
+  const userRoles = user?.realm_access?.roles || []
+  const isOrganizer =
+    isAuthenticated && userRoles.includes('ORGANIZER')
 
   const userName =
     user?.given_name ||
@@ -43,9 +48,9 @@ function App() {
     const syncUser = async () => {
       if (!keycloak.authenticated) return
 
-      const userRoles = keycloak.tokenParsed?.realm_access?.roles || []
+      const roles = keycloak.tokenParsed?.realm_access?.roles || []
 
-      if (userRoles.includes('ORGANIZER')) return
+      if (roles.includes('ORGANIZER')) return
 
       try {
         const response = await fetch('http://localhost:3000/api/users/me', {
@@ -61,18 +66,15 @@ function App() {
         if (!response.ok) {
           throw new Error(data.message)
         }
-
-        setSyncMessage('Podatki uporabnika so uspešno shranjeni.')
       } catch (error) {
         console.error('Napaka pri shranjevanju uporabnika:', error)
-        setSyncMessage('Shranjevanje uporabnika ni uspelo.')
       }
     }
 
     syncUser()
   }, [])
 
-    useEffect(() => {
+  useEffect(() => {
     const url = new URL(window.location.href)
 
     if (url.searchParams.get('registration') === '1') {
@@ -148,6 +150,69 @@ function App() {
     }
   }
 
+  const handleEventFormChange = (event) => {
+    const { name, value } = event.target
+
+    setEventForm(previous => ({
+      ...previous,
+      [name]: value
+    }))
+  }
+
+  const handleEventSubmit = async (event) => {
+    event.preventDefault()
+
+    setIsSubmitting(true)
+    setEventMessage('')
+    setEventError(false)
+
+    try {
+      const response = await fetch('http://localhost:3000/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${keycloak.token}`
+        },
+        body: JSON.stringify({
+          ...eventForm,
+          startDate: new Date(eventForm.startDate).toISOString(),
+          endDate: new Date(eventForm.endDate).toISOString(),
+          registrationDeadline: new Date(
+            eventForm.registrationDeadline
+          ).toISOString(),
+          maxParticipants: Number(eventForm.maxParticipants),
+          categoryId: Number(eventForm.categoryId)
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Ustvarjanje dogodka ni uspelo.')
+      }
+
+      setEventMessage(
+        'Dogodek je bil uspešno ustvarjen kot osnutek.'
+      )
+
+      setEventForm({
+        title: '',
+        description: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        registrationDeadline: '',
+        maxParticipants: '',
+        categoryId: ''
+      })
+    } catch (error) {
+      setEventError(true)
+      setEventMessage(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleLogout = () => {
     keycloak.logout({
       redirectUri: window.location.origin
@@ -157,7 +222,14 @@ function App() {
   return (
     <div className="app-shell">
       <header className="navbar">
-        <a href="#" className="brand">
+        <a
+          href="#"
+          className="brand"
+          onClick={() => {
+            setOrganizerView('home')
+            setRegistrationView('closed')
+          }}
+        >
           <span className="brand-icon">E</span>
           <span>eventflow</span>
         </a>
@@ -170,16 +242,38 @@ function App() {
         <div className="nav-actions">
           {isAuthenticated ? (
             <>
+              {isOrganizer && (
+                <button
+                  className="button button-outline"
+                  onClick={() => {
+                    setOrganizerView('create')
+                    setRegistrationView('closed')
+                    setEventMessage('')
+                    setEventError(false)
+                  }}
+                >
+                  Ustvari dogodek
+                </button>
+              )}
+
               <span className="nav-user">{userName}</span>
-              <button className="button button-outline" onClick={handleLogout}>
+
+              <button
+                className="button button-outline"
+                onClick={handleLogout}
+              >
                 Odjava
               </button>
             </>
           ) : (
             <>
-              <button className="button button-text" onClick={handleLogin}>
+              <button
+                className="button button-text"
+                onClick={handleLogin}
+              >
                 Prijava
               </button>
+
               <button
                 className="button button-primary"
                 onClick={openRegistration}
@@ -193,7 +287,11 @@ function App() {
 
       <main>
         <section
-          className={`hero ${registrationView !== 'closed' ? 'hero-registration' : ''}`}
+          className={`hero ${
+            registrationView !== 'closed' || organizerView === 'create'
+              ? 'hero-registration'
+              : ''
+          }`}
           id="about"
         >
           <div className="hero-background">
@@ -202,6 +300,7 @@ function App() {
               alt=""
               className="hero-background-image"
             />
+
             <div className="hero-overlay"></div>
           </div>
 
@@ -211,29 +310,187 @@ function App() {
               TVOJ PROSTOR ZA DOGODKE
             </div>
 
-            {isAuthenticated ? (
-              <>
+            {isOrganizer && organizerView === 'create' ? (
+              <div className="event-form-panel">
+                <span className="section-label">NOV DOGODEK</span>
+
                 <h1>
-                  Dobrodošel,<br />
-                  <span>{userName}.</span>
+                  Ustvari <span>dogodek.</span>
                 </h1>
 
-                <p className="hero-description">
-                  Veseli nas, da si z nami. Odkrij nove dogodke in poišči
-                  priložnosti za nepozabna doživetja.
+                <p className="form-description">
+                  Izpolni podatke o dogodku. Dogodek bo najprej shranjen
+                  kot osnutek, ki ga lahko pozneje objaviš.
                 </p>
 
-                <div className="user-info">
-                  <span className="user-info-label">Prijavljen uporabnik</span>
-                  <strong>{user?.email || user?.preferred_username}</strong>
-                  <span className="user-role">
-                    {appRoles.length > 0
-                      ? appRoles.map(role => roleNames[role]).join(', ')
-                      : 'Brez določene vloge'}
-                  </span>
-                  {syncMessage && <p>{syncMessage}</p>}
-                </div>
-              </>
+                <form
+                  className="event-form"
+                  onSubmit={handleEventSubmit}
+                >
+                  <div className="event-form-grid">
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-title">
+                        Naziv dogodka
+                      </label>
+
+                      <input
+                        id="event-title"
+                        name="title"
+                        type="text"
+                        maxLength={255}
+                        placeholder="Npr. Poletni glasbeni večer"
+                        value={eventForm.title}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-description">
+                        Opis dogodka
+                      </label>
+
+                      <textarea
+                        id="event-description"
+                        name="description"
+                        placeholder="Opiši dogodek ..."
+                        value={eventForm.description}
+                        onChange={handleEventFormChange}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-location">
+                        Lokacija
+                      </label>
+
+                      <input
+                        id="event-location"
+                        name="location"
+                        type="text"
+                        maxLength={255}
+                        placeholder="Npr. Maribor"
+                        value={eventForm.location}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-start">
+                        Začetek dogodka
+                      </label>
+
+                      <input
+                        id="event-start"
+                        name="startDate"
+                        type="datetime-local"
+                        value={eventForm.startDate}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-end">
+                        Konec dogodka
+                      </label>
+
+                      <input
+                        id="event-end"
+                        name="endDate"
+                        type="datetime-local"
+                        value={eventForm.endDate}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-deadline">
+                        Rok za prijavo
+                      </label>
+
+                      <input
+                        id="event-deadline"
+                        name="registrationDeadline"
+                        type="datetime-local"
+                        value={eventForm.registrationDeadline}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-max">
+                        Največje število udeležencev
+                      </label>
+
+                      <input
+                        id="event-max"
+                        name="maxParticipants"
+                        type="number"
+                        min="1"
+                        placeholder="Npr. 100"
+                        value={eventForm.maxParticipants}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-category">
+                        Kategorija
+                      </label>
+
+                      <select
+                        id="event-category"
+                        name="categoryId"
+                        value={eventForm.categoryId}
+                        onChange={handleEventFormChange}
+                        required
+                      >
+                        <option value="">Izberi kategorijo</option>
+                        <option value="1">Koncerti</option>
+                        <option value="2">Šport</option>
+                        <option value="3">Izobraževanje</option>
+                        <option value="4">Kultura</option>
+                        <option value="5">Drugo</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    className="button button-primary button-large form-submit"
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Shranjevanje ...' : 'Shrani osnutek'}
+                  </button>
+                </form>
+
+                {eventMessage && (
+                  <div
+                    className={`form-message ${
+                      eventError ? 'form-error' : 'form-success'
+                    }`}
+                  >
+                    {eventMessage}
+                  </div>
+                )}
+
+                <button
+                  className="back-link"
+                  onClick={() => {
+                    setOrganizerView('home')
+                    setEventMessage('')
+                    setEventError(false)
+                  }}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
             ) : registrationView === 'closed' ? (
               <>
                 <h1>
@@ -336,7 +593,10 @@ function App() {
                   className="registration-form"
                   onSubmit={handleOrganizationRegistration}
                 >
-                  <label htmlFor="organization-name">Ime organizacije</label>
+                  <label htmlFor="organization-name">
+                    Ime organizacije
+                  </label>
+
                   <input
                     id="organization-name"
                     name="name"
@@ -347,7 +607,10 @@ function App() {
                     required
                   />
 
-                  <label htmlFor="organization-email">E-poštni naslov</label>
+                  <label htmlFor="organization-email">
+                    E-poštni naslov
+                  </label>
+
                   <input
                     id="organization-email"
                     name="email"
@@ -358,7 +621,10 @@ function App() {
                     required
                   />
 
-                  <label htmlFor="organization-password">Geslo</label>
+                  <label htmlFor="organization-password">
+                    Geslo
+                  </label>
+
                   <input
                     id="organization-password"
                     name="password"
@@ -412,7 +678,7 @@ function App() {
           </div>
         </section>
 
-        {registrationView === 'closed' && (
+        {registrationView === 'closed' && organizerView === 'home' && (
           <section className="features" id="features">
             <div className="section-heading">
               <div>
@@ -460,9 +726,13 @@ function App() {
         )}
       </main>
 
-      {registrationView === 'closed' && (
+      {registrationView === 'closed' && organizerView === 'home' && (
         <footer className="footer">
-          <a href="#" className="brand footer-brand">
+          <a
+            href="#"
+            className="brand footer-brand"
+            onClick={() => setOrganizerView('home')}
+          >
             <span className="brand-icon">E</span>
             <span>eventflow</span>
           </a>
@@ -474,6 +744,5 @@ function App() {
     </div>
   )
 }
-
 
 export default App
