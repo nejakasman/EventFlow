@@ -28,7 +28,7 @@ Za prijavo uporabnikov bo uporabljena avtentikacija z žetoni JWT. Dostop do fun
 ## 4. Arhitekturne odločitve
 
 - **React:** Izbrala sem React, ker omogoča izdelavo preglednega in interaktivnega uporabniškega vmesnika ter ponovno uporabo komponent, na primer pri prikazu dogodkov in prijav.
-- **Java in Spring Boot:** Izbrala sem ju, ker omogočata razvoj backenda, ki bo obdeloval prijave na dogodke, preverjal prosta mesta in skrbel za pravila aplikacije.
+- **Node.js in Express**: Izbrala sem ju, ker omogočata razvoj backenda, ki bo obdeloval prijave na dogodke, preverjal prosta mesta in skrbel za pravila aplikacije. Ker je tudi frontend izdelan v JavaScriptu z Reactom, lahko na obeh delih aplikacije uporabljamo isti programski jezik.
 - **PostgreSQL:** Izbrala sem PostgreSQL, ker so uporabniki, dogodki in prijave med seboj povezani podatki, ki jih lahko relacijska podatkovna baza učinkovito organizira in ohranja njihove povezave.
 - **REST API:** Izbrala sem REST API, ker omogoča izmenjavo podatkov med frontendom in backendom prek HTTP-zahtev.
 - **JWT, Spring Security in BCrypt:** Izbrala sem jih za preverjanje identitete uporabnikov, omejevanje dostopa glede na njihove vloge in varno shranjevanje gesel.

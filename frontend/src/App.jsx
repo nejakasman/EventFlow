@@ -621,118 +621,126 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header
-        className={`navbar ${
-          organizerView === 'discover' ? 'navbar-light' : ''
-        }`}
+    <header
+      className={`navbar ${
+        organizerView === 'home' || organizerView === 'create'
+          ? 'navbar-home'
+          : 'navbar-light'
+      }`}
+    >
+      <a
+        href="#"
+        className="brand"
+        onClick={(event) => {
+          event.preventDefault()
+          setOrganizerView('home')
+          setRegistrationView('closed')
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}
       >
-        <a
-          href="#"
-          className="brand"
-          onClick={(event) => {
-            event.preventDefault()
-            setOrganizerView('home')
-            setRegistrationView('closed')
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
+        <span className="brand-icon">E</span>
+        <span>eventflow</span>
+      </a>
+
+      <div className="nav-actions">
+        <button
+          className={`button ${
+            organizerView === 'discover'
+              ? 'button-primary'
+              : 'button-outline'
+          }`}
+          onClick={() => handleOpenDiscover()}
         >
-          <span className="brand-icon">E</span>
-          <span>eventflow</span>
-        </a>
+          Odkrij dogodke
+        </button>
 
-        <nav className="nav-links">
-          <a href="#about">O platformi</a>
-          <a href="#features">Kaj ponujamo</a>
-        </nav>
-
-        <div className="nav-actions">
-          <button
-            className={`button ${
-              organizerView === 'discover'
-                ? 'button-primary'
-                : 'button-outline'
-            }`}
-            onClick={() => handleOpenDiscover()}
-          >
-            Odkrij dogodke
-          </button>
-
-          {isAuthenticated ? (
-            <>
-              {isOrganizer && (
-                <>
-                  <button
-                    className={`button ${
-                      organizerView === 'myEvents' ||
-                      organizerView === 'eventRegistrations'
-                        ? 'button-primary'
-                        : 'button-outline'
-                    }`}
-                    onClick={handleOpenMyEvents}
-                  >
-                    Moji dogodki
-                  </button>
-
-                  <button
-                    className={`button ${
-                      organizerView === 'create'
-                        ? 'button-primary'
-                        : 'button-outline'
-                    }`}
-                    onClick={() => {
-                      setOrganizerView('create')
-                      setRegistrationView('closed')
-                      setEventMessage('')
-                      setEventError(false)
-                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                    }}
-                  >
-                    Ustvari dogodek
-                  </button>
-                </>
-              )}
-
-              {isParticipant && !isOrganizer && (
+        {isAuthenticated ? (
+          <>
+            {isOrganizer && (
+              <>
                 <button
                   className={`button ${
-                    organizerView === 'myRegistrations'
+                    organizerView === 'myEvents' ||
+                    organizerView === 'eventRegistrations'
                       ? 'button-primary'
                       : 'button-outline'
                   }`}
-                  onClick={handleOpenMyRegistrations}
+                  onClick={handleOpenMyEvents}
                 >
-                  Moje prijave
+                  Moji dogodki
                 </button>
-              )}
 
-              <span className="nav-user">{userName}</span>
+                <button
+                  className={`button ${
+                    organizerView === 'create'
+                      ? 'button-primary'
+                      : 'button-outline'
+                  }`}
+                  onClick={() => {
+                    setOrganizerView('create')
+                    setRegistrationView('closed')
+                    setEventMessage('')
+                    setEventError(false)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                >
+                  Ustvari dogodek
+                </button>
+              </>
+            )}
 
+            {isParticipant && !isOrganizer && (
               <button
-                className="button button-outline"
-                onClick={handleLogout}
+                className={`button ${
+                  organizerView === 'myRegistrations'
+                    ? 'button-primary'
+                    : 'button-outline'
+                }`}
+                onClick={handleOpenMyRegistrations}
               >
-                Odjava
+                Moje prijave
               </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="button button-text"
-                onClick={handleLogin}
-              >
-                Prijava
-              </button>
+            )}
 
-              <button
-                className="button button-primary"
-                onClick={openRegistration}
-              >
-                Registracija
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+            <div className="nav-profile">
+              <div className="nav-avatar">
+                {userName ? userName.charAt(0).toUpperCase() : '?'}
+              </div>
+
+              <div className="nav-profile-info">
+                <span className="nav-profile-name">{userName}</span>
+                <span className="nav-profile-role">
+                  {isOrganizer ? 'Organizator' : 'Udeleženec'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              className="button button-outline"
+              onClick={handleLogout}
+            >
+              Odjava
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="button button-text"
+              onClick={handleLogin}
+            >
+              Prijava
+            </button>
+
+            <button
+              className="button button-primary"
+              onClick={openRegistration}
+            >
+              Registracija
+            </button>
+          </>
+        )}
+      </div>
+    </header>
 
       <main>
         <section
@@ -1717,19 +1725,54 @@ function App() {
                 </p>
 
                 <div className="hero-actions">
-                  <button
-                    className="button button-primary button-large"
-                    onClick={openRegistration}
-                  >
-                    Ustvari račun <span>→</span>
-                  </button>
+                  {!isAuthenticated ? (
+                    <>
+                      <button
+                        className="button button-primary button-large"
+                        onClick={openRegistration}
+                      >
+                        Ustvari račun <span>→</span>
+                      </button>
 
-                  <button
-                    className="button button-outline button-large"
-                    onClick={handleLogin}
-                  >
-                    Že imam račun
-                  </button>
+                      <button
+                        className="button button-outline button-large"
+                        onClick={handleLogin}
+                      >
+                        Že imam račun
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="button button-primary button-large"
+                        onClick={() => handleOpenDiscover()}
+                      >
+                        Odkrij dogodke <span>→</span>
+                      </button>
+
+                      {isOrganizer ? (
+                        <button
+                          className="button button-outline button-large"
+                          onClick={() => {
+                            setOrganizerView('create')
+                            setRegistrationView('closed')
+                            setEventMessage('')
+                            setEventError(false)
+                            window.scrollTo({ top: 0, behavior: 'smooth' })
+                          }}
+                        >
+                          Ustvari dogodek
+                        </button>
+                      ) : isParticipant ? (
+                        <button
+                          className="button button-outline button-large"
+                          onClick={handleOpenMyRegistrations}
+                        >
+                          Moje prijave
+                        </button>
+                      ) : null}
+                    </>
+                  )}
                 </div>
 
                 <div className="hero-bottom-note">
