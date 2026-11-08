@@ -5,20 +5,52 @@ import React, { useEffect, useState } from 'react'
 
 function App() {
   const isAuthenticated = keycloak.authenticated
-  const [syncMessage, setSyncMessage] = useState('')
+
+  const [registrationView, setRegistrationView] = useState('closed')
+  const [organizerView, setOrganizerView] = useState('home')
+
+  const [organizationForm, setOrganizationForm] = useState({
+    name: '',
+    email: '',
+    password: ''
+  })
+
+  const [registrationMessage, setRegistrationMessage] = useState('')
+  const [registrationError, setRegistrationError] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    registrationDeadline: '',
+    maxParticipants: '',
+    categoryId: ''
+  })
+
+  const [eventMessage, setEventMessage] = useState('')
+  const [eventError, setEventError] = useState(false)
+
+  const [myEvents, setMyEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [eventsMessage, setEventsMessage] = useState('')
+  const [eventsError, setEventsError] = useState(false)
+  const [publishingEventId, setPublishingEventId] = useState(null)
+
+  const [publicEvents, setPublicEvents] = useState([])
+  const [publicEventsLoading, setPublicEventsLoading] = useState(false)
+  const [publicEventsError, setPublicEventsError] = useState('')
+  const [eventSearch, setEventSearch] = useState('')
+  const [eventCategoryFilter, setEventCategoryFilter] = useState('')
+  const [eventDateFilter, setEventDateFilter] = useState('')
 
   const user = keycloak.tokenParsed
-  const roles = user?.realm_access?.roles || []
 
-  const appRoles = roles.filter(role =>
-    ['PARTICIPANT', 'ORGANIZER', 'ADMIN'].includes(role)
-  )
-
-  const roleNames = {
-    PARTICIPANT: 'Udeleženec',
-    ORGANIZER: 'Organizator',
-    ADMIN: 'Administrator'
-  }
+  const userRoles = user?.realm_access?.roles || []
+  const isOrganizer =
+    isAuthenticated && userRoles.includes('ORGANIZER')
 
   const userName =
     user?.given_name ||
@@ -29,6 +61,10 @@ function App() {
   useEffect(() => {
     const syncUser = async () => {
       if (!keycloak.authenticated) return
+
+      const roles = keycloak.tokenParsed?.realm_access?.roles || []
+
+      if (roles.includes('ORGANIZER')) return
 
       try {
         const response = await fetch('http://localhost:3000/api/users/me', {
@@ -44,23 +80,304 @@ function App() {
         if (!response.ok) {
           throw new Error(data.message)
         }
-
-        setSyncMessage('Podatki uporabnika so uspešno shranjeni.')
       } catch (error) {
         console.error('Napaka pri shranjevanju uporabnika:', error)
-        setSyncMessage('Shranjevanje uporabnika ni uspelo.')
       }
     }
 
     syncUser()
   }, [])
 
+  useEffect(() => {
+    const url = new URL(window.location.href)
+
+    if (url.searchParams.get('registration') === '1') {
+      setRegistrationView('choose')
+
+      url.searchParams.delete('registration')
+      window.history.replaceState({}, '', url.pathname)
+    }
+  }, [])
+
   const handleLogin = () => {
     keycloak.login()
   }
 
-  const handleRegister = () => {
+  const openRegistration = () => {
+    setRegistrationView('choose')
+    setRegistrationMessage('')
+    setRegistrationError(false)
+  }
+
+  const handleParticipantRegistration = () => {
     keycloak.register()
+  }
+
+  const handleOrganizationFormChange = (event) => {
+    const { name, value } = event.target
+
+    setOrganizationForm(previous => ({
+      ...previous,
+      [name]: value
+    }))
+  }
+
+  const handleOrganizationRegistration = async (event) => {
+    event.preventDefault()
+
+    setIsSubmitting(true)
+    setRegistrationMessage('')
+    setRegistrationError(false)
+
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/organizations/register',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(organizationForm)
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registracija ni uspela.')
+      }
+
+      setRegistrationMessage(
+        'Registracija organizacije je bila uspešna. Zdaj se lahko prijavite.'
+      )
+
+      setOrganizationForm({
+        name: '',
+        email: '',
+        password: ''
+      })
+    } catch (error) {
+      setRegistrationError(true)
+      setRegistrationMessage(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEventFormChange = (event) => {
+    const { name, value } = event.target
+
+    setEventForm(previous => ({
+      ...previous,
+      [name]: value
+    }))
+  }
+
+  const handleEventSubmit = async (event) => {
+    event.preventDefault()
+
+    setIsSubmitting(true)
+    setEventMessage('')
+    setEventError(false)
+
+    try {
+      const response = await fetch('http://localhost:3000/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${keycloak.token}`
+        },
+        body: JSON.stringify({
+          ...eventForm,
+          startDate: new Date(eventForm.startDate).toISOString(),
+          endDate: new Date(eventForm.endDate).toISOString(),
+          registrationDeadline: new Date(
+            eventForm.registrationDeadline
+          ).toISOString(),
+          maxParticipants: Number(eventForm.maxParticipants),
+          categoryId: Number(eventForm.categoryId)
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Ustvarjanje dogodka ni uspelo.')
+      }
+
+      setEventMessage(
+        'Dogodek je bil uspešno ustvarjen kot osnutek.'
+      )
+
+      setEventForm({
+        title: '',
+        description: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        registrationDeadline: '',
+        maxParticipants: '',
+        categoryId: ''
+      })
+    } catch (error) {
+      setEventError(true)
+      setEventMessage(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const loadMyEvents = async () => {
+    setEventsLoading(true)
+    setEventsMessage('')
+    setEventsError(false)
+
+    try {
+      const response = await fetch('http://localhost:3000/api/events/my', {
+        headers: {
+          Authorization: `Bearer ${keycloak.token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Pridobivanje dogodkov ni uspelo.')
+      }
+
+      setMyEvents(data.events || [])
+    } catch (error) {
+      setEventsError(true)
+      setEventsMessage(error.message)
+    } finally {
+      setEventsLoading(false)
+    }
+  }
+
+  const handleOpenMyEvents = () => {
+    setOrganizerView('myEvents')
+    setRegistrationView('closed')
+    loadMyEvents()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handlePublishEvent = async (eventId) => {
+    setPublishingEventId(eventId)
+    setEventsMessage('')
+    setEventsError(false)
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events/${eventId}/publish`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Objava dogodka ni uspela.')
+      }
+
+      setMyEvents(previous =>
+        previous.map(event =>
+          event.id === eventId
+            ? { ...event, status: 'PUBLISHED' }
+            : event
+        )
+      )
+
+      setEventsMessage('Dogodek je bil uspešno objavljen.')
+    } catch (error) {
+      setEventsError(true)
+      setEventsMessage(error.message)
+    } finally {
+      setPublishingEventId(null)
+    }
+  }
+
+  const loadPublicEvents = async (filters = {}) => {
+    setPublicEventsLoading(true)
+    setPublicEventsError('')
+
+    const params = new URLSearchParams()
+
+    if (filters.search?.trim()) {
+      params.set('search', filters.search.trim())
+    }
+
+    if (filters.categoryId) {
+      params.set('categoryId', filters.categoryId)
+    }
+
+    if (filters.date) {
+      params.set('date', filters.date)
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events?${params.toString()}`
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Dogodkov ni bilo mogoče naložiti.')
+      }
+
+      setPublicEvents(data.events || [])
+    } catch (error) {
+      setPublicEventsError(error.message)
+    } finally {
+      setPublicEventsLoading(false)
+    }
+  }
+
+  const handleOpenDiscover = (categoryId = '') => {
+    setOrganizerView('discover')
+    setRegistrationView('closed')
+    setEventSearch('')
+    setEventCategoryFilter(categoryId)
+    setEventDateFilter('')
+
+    loadPublicEvents({
+      categoryId
+    })
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleApplyEventFilters = (event) => {
+    event.preventDefault()
+
+    loadPublicEvents({
+      search: eventSearch,
+      categoryId: eventCategoryFilter,
+      date: eventDateFilter
+    })
+  }
+
+  const handleResetEventFilters = () => {
+    setEventSearch('')
+    setEventCategoryFilter('')
+    setEventDateFilter('')
+    loadPublicEvents()
+  }
+
+  const formatDate = (date) => {
+    if (!date) return ''
+
+    return new Date(date).toLocaleString('sl-SI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const handleLogout = () => {
@@ -69,10 +386,31 @@ function App() {
     })
   }
 
+  const eventImages = {
+    1: '/images/events/koncerti.jpg',
+    2: '/images/events/sport.jpg',
+    3: '/images/events/izobrazevanje.jpg',
+    4: '/images/events/kultura.jpg',
+    5: '/images/events/kultura.jpg'
+  }
+
   return (
     <div className="app-shell">
-      <header className="navbar">
-        <a href="#" className="brand">
+      <header
+        className={`navbar ${
+          organizerView === 'discover' ? 'navbar-light' : ''
+        }`}
+      >
+        <a
+          href="#"
+          className="brand"
+          onClick={(event) => {
+            event.preventDefault()
+            setOrganizerView('home')
+            setRegistrationView('closed')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+        >
           <span className="brand-icon">E</span>
           <span>eventflow</span>
         </a>
@@ -83,19 +421,73 @@ function App() {
         </nav>
 
         <div className="nav-actions">
+          <button
+            className={`button ${
+              organizerView === 'discover'
+                ? 'button-primary'
+                : 'button-outline'
+            }`}
+            onClick={() => handleOpenDiscover()}
+          >
+            Odkrij dogodke
+          </button>
+
           {isAuthenticated ? (
             <>
+              {isOrganizer && (
+                <>
+                  <button
+                    className={`button ${
+                      organizerView === 'myEvents'
+                        ? 'button-primary'
+                        : 'button-outline'
+                    }`}
+                    onClick={handleOpenMyEvents}
+                  >
+                    Moji dogodki
+                  </button>
+
+                  <button
+                    className={`button ${
+                      organizerView === 'create'
+                        ? 'button-primary'
+                        : 'button-outline'
+                    }`}
+                    onClick={() => {
+                      setOrganizerView('create')
+                      setRegistrationView('closed')
+                      setEventMessage('')
+                      setEventError(false)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  >
+                    Ustvari dogodek
+                  </button>
+                </>
+              )}
+
               <span className="nav-user">{userName}</span>
-              <button className="button button-outline" onClick={handleLogout}>
+
+              <button
+                className="button button-outline"
+                onClick={handleLogout}
+              >
                 Odjava
               </button>
             </>
           ) : (
             <>
-              <button className="button button-text" onClick={handleLogin}>
+              <button
+                className="button button-text"
+                onClick={handleLogin}
+              >
                 Prijava
               </button>
-              <button className="button button-primary" onClick={handleRegister}>
+
+              <button
+                className="button button-primary"
+                onClick={openRegistration}
+              >
                 Registracija
               </button>
             </>
@@ -104,38 +496,629 @@ function App() {
       </header>
 
       <main>
-        <section className="hero" id="about">
-          <div className="hero-content">
-            <div className="eyebrow">
-              <span className="eyebrow-dot"></span>
-              TVOJ PROSTOR ZA DOGODKE
-            </div>
+        <section
+          className={`hero ${
+            registrationView !== 'closed' ||
+            organizerView === 'create' ||
+            organizerView === 'myEvents' ||
+            organizerView === 'discover'
+              ? 'hero-registration'
+              : ''
+          } ${
+            organizerView === 'myEvents'
+              ? 'hero-my-events'
+              : organizerView === 'discover'
+                ? 'hero-discover'
+                : ''
+          }`}
+          id="about"
+        >
+          <div className="hero-background">
+            <img
+              src="/concert-hero.png"
+              alt=""
+              className="hero-background-image"
+            />
 
-            {isAuthenticated ? (
-              <>
+            <div className="hero-overlay"></div>
+          </div>
+
+          <div className="hero-content">
+            {organizerView === 'discover' ? (
+              <div className="discover-panel">
+                <div className="discover-heading">
+                  <span className="section-label">RAZIŠČI EVENTFLOW</span>
+
+                  <h1>
+                    Odkrij svoje naslednje <span>doživetje.</span>
+                  </h1>
+
+                  <p>
+                    Koncerti, šport, kultura in še veliko več.
+                    Poišči dogodek, ki ti je pisan na kožo.
+                  </p>
+                </div>
+
+                <div className="discover-categories">
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '1'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('1')}
+                  >
+                    <img
+                      src="/images/events/koncerti.jpg"
+                      alt="Koncerti"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>01 / GLASBA</small>
+                      <strong>Koncerti</strong>
+                      <span>Odkrij glasbena doživetja →</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '2'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('2')}
+                  >
+                    <img
+                      src="/images/events/sport.jpg"
+                      alt="Šport"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>02 / AKTIVNOST</small>
+                      <strong>Šport</strong>
+                      <span>Najdi svojo naslednjo aktivnost →</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '3'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('3')}
+                  >
+                    <img
+                      src="/images/events/izobrazevanje.jpg"
+                      alt="Izobraževanje"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>03 / ZNANJE</small>
+                      <strong>Izobraževanje</strong>
+                      <span>Nauči se nekaj novega →</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '4'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('4')}
+                  >
+                    <img
+                      src="/images/events/kultura.jpg"
+                      alt="Kultura"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>04 / UMETNOST</small>
+                      <strong>Kultura</strong>
+                      <span>Doživi nekaj drugačnega →</span>
+                    </span>
+                  </button>
+                </div>
+
+                <div className="discover-events-section">
+                  <div className="discover-events-heading">
+                    <div>
+                      <span className="section-label">
+                        TVOJ NASLEDNJI DOGODEK
+                      </span>
+                      <h2>Razišči dogodke.</h2>
+                      <p>
+                        Izberi, kaj te zanima, in poišči nekaj zase.
+                      </p>
+                    </div>
+
+                    <span className="discover-event-count">
+                      {publicEvents.length}{' '}
+                      {publicEvents.length === 1
+                        ? 'dogodek'
+                        : publicEvents.length === 2
+                          ? 'dogodka'
+                          : 'dogodkov'}
+                    </span>
+                  </div>
+
+                  <form
+                    className="discover-filters"
+                    onSubmit={handleApplyEventFilters}
+                  >
+                    <div className="discover-search">
+                      <label htmlFor="event-search">
+                        Išči dogodek
+                      </label>
+                      <input
+                        id="event-search"
+                        type="text"
+                        placeholder="Npr. Poletni glasbeni večer ..."
+                        value={eventSearch}
+                        onChange={(event) =>
+                          setEventSearch(event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="discover-filter">
+                      <label htmlFor="event-category-filter">
+                        Kategorija
+                      </label>
+                      <select
+                        id="event-category-filter"
+                        value={eventCategoryFilter}
+                        onChange={(event) =>
+                          setEventCategoryFilter(event.target.value)
+                        }
+                      >
+                        <option value="">Vse kategorije</option>
+                        <option value="1">Koncerti</option>
+                        <option value="2">Šport</option>
+                        <option value="3">Izobraževanje</option>
+                        <option value="4">Kultura</option>
+                        <option value="5">Drugo</option>
+                      </select>
+                    </div>
+
+                    <div className="discover-filter">
+                      <label htmlFor="event-date-filter">
+                        Datum dogodka
+                      </label>
+                      <input
+                        id="event-date-filter"
+                        type="date"
+                        value={eventDateFilter}
+                        onChange={(event) =>
+                          setEventDateFilter(event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <button
+                      className="button button-primary discover-filter-button"
+                      type="submit"
+                    >
+                      Išči dogodke
+                    </button>
+
+                    <button
+                      className="discover-reset-button"
+                      type="button"
+                      onClick={handleResetEventFilters}
+                    >
+                      Ponastavi
+                    </button>
+                  </form>
+
+                  {publicEventsLoading ? (
+                    <div className="discover-message">
+                      Nalaganje dogodkov ...
+                    </div>
+                  ) : publicEventsError ? (
+                    <div className="form-message form-error">
+                      {publicEventsError}
+                    </div>
+                  ) : publicEvents.length === 0 ? (
+                    <div className="discover-empty">
+                      <div className="discover-empty-icon">⌕</div>
+                      <h3>Trenutno ni dogodkov.</h3>
+                      <p>
+                        Poskusi spremeniti iskalne pogoje ali preveri
+                        ponovno pozneje.
+                      </p>
+                      <button
+                        className="button button-outline discover-empty-button"
+                        onClick={handleResetEventFilters}
+                      >
+                        Prikaži vse dogodke
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="discover-event-grid">
+                      {publicEvents.map(event => (
+                        <article
+                          className="discover-event-card"
+                          key={event.id}
+                        >
+                          <div className="discover-event-image">
+                            <img
+                              src={
+                                eventImages[event.category_id] ||
+                                eventImages[5]
+                              }
+                              alt={event.category_name}
+                            />
+                            <span className="discover-event-category">
+                              {event.category_name}
+                            </span>
+                          </div>
+
+                          <div className="discover-event-content">
+                            <div className="discover-event-date">
+                              <span>◷</span>
+                              {formatDate(event.start_date)}
+                            </div>
+
+                            <h3>{event.title}</h3>
+
+                            <p className="discover-event-description">
+                              {event.description ||
+                                'Več informacij o dogodku kmalu.'}
+                            </p>
+
+                            <div className="discover-event-info">
+                              <span>⌖ {event.location}</span>
+                              <span>✳ {event.organization_name}</span>
+                            </div>
+
+                            <div className="discover-event-bottom">
+                              <span>
+                                Do {event.max_participants} udeležencev
+                              </span>
+                              <span className="discover-event-arrow">
+                                →
+                              </span>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  className="back-link discover-back-link"
+                  onClick={() => setOrganizerView('home')}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
+            ) : organizerView === 'myEvents' && isOrganizer ? (
+              <div className="my-events-panel">
+                <span className="section-label">ORGANIZACIJA</span>
+
                 <h1>
-                  Dobrodošel,<br />
-                  <span>{userName}.</span>
+                  Moji <span>dogodki.</span>
                 </h1>
 
-                <p className="hero-description">
-                  Veseli nas, da si z nami. Odkrij nove dogodke in poišči
-                  priložnosti za nepozabna doživetja.
+                <p className="form-description">
+                  Tukaj lahko spremljaš svoje ustvarjene dogodke in objaviš
+                  tiste, ki so pripravljeni.
                 </p>
 
-                <div className="user-info">
-                  <span className="user-info-label">Prijavljen uporabnik</span>
-                  <strong>{user?.email || user?.preferred_username}</strong>
-                  <span className="user-role">
-                    {appRoles.length > 0
-                      ? appRoles.map(role => roleNames[role]).join(', ')
-                      : 'Brez določene vloge'}
-                  </span>
-                  {syncMessage && <p>{syncMessage}</p>}
-                </div>
-              </>
-            ) : (
+                {eventsMessage && (
+                  <div
+                    className={`form-message ${
+                      eventsError ? 'form-error' : 'form-success'
+                    }`}
+                  >
+                    {eventsMessage}
+                  </div>
+                )}
+
+                {eventsLoading ? (
+                  <div className="events-info">
+                    Nalaganje dogodkov ...
+                  </div>
+                ) : myEvents.length === 0 && !eventsError ? (
+                  <div className="events-empty">
+                    <div className="events-empty-icon">✳</div>
+                    <h2>Še nimaš dogodkov.</h2>
+                    <p>
+                      Ko ustvariš svoj prvi dogodek, se bo prikazal tukaj.
+                    </p>
+
+                    <button
+                      className="button button-primary"
+                      onClick={() => setOrganizerView('create')}
+                    >
+                      Ustvari dogodek
+                    </button>
+                  </div>
+                ) : (
+                  <div className="my-events-list">
+                    {myEvents.map(event => (
+                      <article className="my-event-card" key={event.id}>
+                        <div className="my-event-card-top">
+                          <span className="my-event-category">
+                            {event.category_name}
+                          </span>
+
+                          <span
+                            className={`event-status ${
+                              event.status === 'PUBLISHED'
+                                ? 'event-status-published'
+                                : 'event-status-draft'
+                            }`}
+                          >
+                            {event.status === 'PUBLISHED'
+                              ? 'Objavljeno'
+                              : event.status === 'DRAFT'
+                                ? 'Osnutek'
+                                : event.status}
+                          </span>
+                        </div>
+
+                        <h2>{event.title}</h2>
+
+                        {event.description && (
+                          <p className="my-event-description">
+                            {event.description}
+                          </p>
+                        )}
+
+                        <div className="my-event-details">
+                          <div>
+                            <span className="event-detail-label">
+                              Lokacija
+                            </span>
+                            <span>{event.location}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Začetek dogodka
+                            </span>
+                            <span>{formatDate(event.start_date)}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Konec dogodka
+                            </span>
+                            <span>{formatDate(event.end_date)}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Rok za prijavo
+                            </span>
+                            <span>
+                              {formatDate(event.registration_deadline)}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Največje število udeležencev
+                            </span>
+                            <span>{event.max_participants}</span>
+                          </div>
+                        </div>
+
+                        {event.status === 'DRAFT' && (
+                          <button
+                            className="button button-primary publish-button"
+                            onClick={() => handlePublishEvent(event.id)}
+                            disabled={publishingEventId === event.id}
+                          >
+                            {publishingEventId === event.id
+                              ? 'Objavljanje ...'
+                              : 'Objavi dogodek'}
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  className="back-link"
+                  onClick={() => setOrganizerView('home')}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
+            ) : isOrganizer && organizerView === 'create' ? (
+              <div className="event-form-panel">
+                <span className="section-label">NOV DOGODEK</span>
+
+                <h1>
+                  Ustvari <span>dogodek.</span>
+                </h1>
+
+                <p className="form-description">
+                  Izpolni podatke o dogodku. Dogodek bo najprej shranjen
+                  kot osnutek, ki ga lahko pozneje objaviš.
+                </p>
+
+                <form
+                  className="event-form"
+                  onSubmit={handleEventSubmit}
+                >
+                  <div className="event-form-grid">
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-title">
+                        Naziv dogodka
+                      </label>
+
+                      <input
+                        id="event-title"
+                        name="title"
+                        type="text"
+                        maxLength={255}
+                        placeholder="Npr. Poletni glasbeni večer"
+                        value={eventForm.title}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-description">
+                        Opis dogodka
+                      </label>
+
+                      <textarea
+                        id="event-description"
+                        name="description"
+                        placeholder="Opiši dogodek ..."
+                        value={eventForm.description}
+                        onChange={handleEventFormChange}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-location">
+                        Lokacija
+                      </label>
+
+                      <input
+                        id="event-location"
+                        name="location"
+                        type="text"
+                        maxLength={255}
+                        placeholder="Npr. Maribor"
+                        value={eventForm.location}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-start">
+                        Začetek dogodka
+                      </label>
+
+                      <input
+                        id="event-start"
+                        name="startDate"
+                        type="datetime-local"
+                        value={eventForm.startDate}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-end">
+                        Konec dogodka
+                      </label>
+
+                      <input
+                        id="event-end"
+                        name="endDate"
+                        type="datetime-local"
+                        value={eventForm.endDate}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-deadline">
+                        Rok za prijavo
+                      </label>
+
+                      <input
+                        id="event-deadline"
+                        name="registrationDeadline"
+                        type="datetime-local"
+                        value={eventForm.registrationDeadline}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field">
+                      <label htmlFor="event-max">
+                        Največje število udeležencev
+                      </label>
+
+                      <input
+                        id="event-max"
+                        name="maxParticipants"
+                        type="number"
+                        min="1"
+                        placeholder="Npr. 100"
+                        value={eventForm.maxParticipants}
+                        onChange={handleEventFormChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="event-field event-field-full">
+                      <label htmlFor="event-category">
+                        Kategorija
+                      </label>
+
+                      <select
+                        id="event-category"
+                        name="categoryId"
+                        value={eventForm.categoryId}
+                        onChange={handleEventFormChange}
+                        required
+                      >
+                        <option value="">Izberi kategorijo</option>
+                        <option value="1">Koncerti</option>
+                        <option value="2">Šport</option>
+                        <option value="3">Izobraževanje</option>
+                        <option value="4">Kultura</option>
+                        <option value="5">Drugo</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    className="button button-primary button-large form-submit"
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Shranjevanje ...' : 'Shrani osnutek'}
+                  </button>
+                </form>
+
+                {eventMessage && (
+                  <div
+                    className={`form-message ${
+                      eventError ? 'form-error' : 'form-success'
+                    }`}
+                  >
+                    {eventMessage}
+                  </div>
+                )}
+
+                <button
+                  className="back-link"
+                  onClick={() => {
+                    setOrganizerView('home')
+                    setEventMessage('')
+                    setEventError(false)
+                  }}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
+            ) : registrationView === 'closed' ? (
               <>
+                <div className="eyebrow">
+                  <span className="eyebrow-dot"></span>
+                  TVOJ PROSTOR ZA DOGODKE
+                </div>
+
                 <h1>
                   Dogodki, ki<br />
                   <span>povezujejo.</span>
@@ -149,7 +1132,7 @@ function App() {
                 <div className="hero-actions">
                   <button
                     className="button button-primary button-large"
-                    onClick={handleRegister}
+                    onClick={openRegistration}
                   >
                     Ustvari račun <span>→</span>
                   </button>
@@ -161,102 +1144,243 @@ function App() {
                     Že imam račun
                   </button>
                 </div>
-              </>
-            )}
 
-            <div className="hero-note">
-              <span className="note-line"></span>
-              Vse za tvoje naslednje doživetje.
-            </div>
-          </div>
-
-          <div className="hero-visual">
-            <div className="visual-glow"></div>
-
-            <div className="visual-card">
-              <div className="visual-top">
-                <span className="visual-label">EVENTFLOW</span>
-                <span className="visual-number">01 / 03</span>
-              </div>
-
-              <div className="visual-art">
-                <div className="art-circle art-circle-one"></div>
-                <div className="art-circle art-circle-two"></div>
-                <div className="art-line"></div>
-                <span className="art-text">MAKE<br />MEMORIES</span>
-              </div>
-
-              <div className="visual-bottom">
-                <div>
-                  <span className="visual-caption">ODKRIJ. DOŽIVI. POVEŽI.</span>
-                  <h3>Tvoj naslednji dogodek se začne tukaj.</h3>
+                <div className="hero-bottom-note">
+                  <span></span>
+                  Vse za tvoje naslednje doživetje.
+                  <span></span>
                 </div>
-                <span className="visual-arrow">↗</span>
+              </>
+            ) : registrationView === 'choose' ? (
+              <div className="registration-panel">
+                <span className="section-label">USTVARI SVOJ RAČUN</span>
+
+                <h1>
+                  Kako se želiš<br />
+                  <span>registrirati?</span>
+                </h1>
+
+                <p className="hero-description">
+                  Izberi vrsto računa, ki najbolje ustreza tvoji uporabi
+                  platforme.
+                </p>
+
+                <div className="account-choice-grid">
+                  <button
+                    className="account-choice"
+                    onClick={handleParticipantRegistration}
+                  >
+                    <span className="choice-icon">♙</span>
+                    <strong>Udeleženec</strong>
+                    <span>
+                      Odkrij dogodke in se prijavi na tiste, ki te zanimajo.
+                    </span>
+                    <span className="choice-arrow">→</span>
+                  </button>
+
+                  <button
+                    className="account-choice"
+                    onClick={() => {
+                      setRegistrationView('organization')
+                      setRegistrationMessage('')
+                    }}
+                  >
+                    <span className="choice-icon">✳</span>
+                    <strong>Organizacija</strong>
+                    <span>
+                      Ustvarjaj dogodke in upravljaj prijave udeležencev.
+                    </span>
+                    <span className="choice-arrow">→</span>
+                  </button>
+                </div>
+
+                <button
+                  className="back-link"
+                  onClick={() => setRegistrationView('closed')}
+                >
+                  ← Nazaj na začetno stran
+                </button>
               </div>
-            </div>
+            ) : (
+              <div className="registration-panel">
+                <span className="section-label">ORGANIZACIJSKI RAČUN</span>
 
-            <div className="floating-tag">
-              <span className="floating-tag-dot"></span>
-              Tvoj svet dogodkov
-            </div>
+                <h1>
+                  Registracija<br />
+                  <span>organizacije.</span>
+                </h1>
+
+                <p className="form-description">
+                  Ustvari račun za svojo organizacijo in začni objavljati
+                  dogodke.
+                </p>
+
+                <form
+                  className="registration-form"
+                  onSubmit={handleOrganizationRegistration}
+                >
+                  <label htmlFor="organization-name">
+                    Ime organizacije
+                  </label>
+
+                  <input
+                    id="organization-name"
+                    name="name"
+                    type="text"
+                    placeholder="Vnesi ime organizacije"
+                    value={organizationForm.name}
+                    onChange={handleOrganizationFormChange}
+                    required
+                  />
+
+                  <label htmlFor="organization-email">
+                    E-poštni naslov
+                  </label>
+
+                  <input
+                    id="organization-email"
+                    name="email"
+                    type="email"
+                    placeholder="ime@organizacija.si"
+                    value={organizationForm.email}
+                    onChange={handleOrganizationFormChange}
+                    required
+                  />
+
+                  <label htmlFor="organization-password">
+                    Geslo
+                  </label>
+
+                  <input
+                    id="organization-password"
+                    name="password"
+                    type="password"
+                    placeholder="Ustvari geslo"
+                    value={organizationForm.password}
+                    onChange={handleOrganizationFormChange}
+                    minLength={8}
+                    required
+                  />
+
+                  <button
+                    className="button button-primary button-large form-submit"
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Registracija ...' : 'Ustvari račun'}
+                  </button>
+                </form>
+
+                {registrationMessage && (
+                  <div
+                    className={`form-message ${
+                      registrationError ? 'form-error' : 'form-success'
+                    }`}
+                  >
+                    {registrationMessage}
+
+                    {!registrationError && (
+                      <button
+                        className="message-login"
+                        onClick={handleLogin}
+                      >
+                        Prijavi se
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  className="back-link"
+                  onClick={() => {
+                    setRegistrationView('choose')
+                    setRegistrationMessage('')
+                  }}
+                >
+                  ← Nazaj na izbiro računa
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="features" id="features">
-          <div className="section-heading">
-            <div>
-              <span className="section-label">ZAKAJ EVENTFLOW?</span>
-              <h2>Vse na enem mestu.</h2>
+        {registrationView === 'closed' && organizerView === 'home' && (
+          <section className="features" id="features">
+            <div className="section-heading">
+              <div>
+                <span className="section-label">ZAKAJ EVENTFLOW?</span>
+                <h2>Vse na enem mestu.</h2>
+              </div>
+
+              <p>
+                Preprosta pot od iskanja dogodka do nove izkušnje.
+              </p>
             </div>
 
-            <p>
-              Preprosta pot od iskanja dogodka do nove izkušnje.
-            </p>
-          </div>
+            <div className="feature-grid">
+              <article
+                className="feature-card feature-card-clickable"
+                onClick={() => handleOpenDiscover()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    handleOpenDiscover()
+                  }
+                }}
+              >
+                <span className="feature-number">01</span>
+                <div className="feature-icon">⌕</div>
+                <h3>Odkrij dogodke</h3>
+                <p>
+                  Razišči različne dogodke in poišči tiste, ki ustrezajo
+                  tvojim interesom.
+                </p>
+              </article>
 
-          <div className="feature-grid">
-            <article className="feature-card">
-              <span className="feature-number">01</span>
-              <div className="feature-icon">⌕</div>
-              <h3>Odkrij dogodke</h3>
-              <p>
-                Razišči različne dogodke in poišči tiste, ki ustrezajo
-                tvojim interesom.
-              </p>
-            </article>
+              <article className="feature-card feature-card-highlight">
+                <span className="feature-number">02</span>
+                <div className="feature-icon">↗</div>
+                <h3>Preprosta prijava</h3>
+                <p>
+                  Prijavi se na izbrani dogodek in spremljaj svoje prijave
+                  na enem mestu.
+                </p>
+              </article>
 
-            <article className="feature-card feature-card-highlight">
-              <span className="feature-number">02</span>
-              <div className="feature-icon">↗</div>
-              <h3>Preprosta prijava</h3>
-              <p>
-                Prijavi se na izbrani dogodek in spremljaj svoje prijave
-                na enem mestu.
-              </p>
-            </article>
-
-            <article className="feature-card">
-              <span className="feature-number">03</span>
-              <div className="feature-icon">✳</div>
-              <h3>Organiziraj dogodke</h3>
-              <p>
-                Ustvari dogodek, predstavi svojo organizacijo in upravljaj
-                prijave udeležencev.
-              </p>
-            </article>
-          </div>
-        </section>
+              <article className="feature-card">
+                <span className="feature-number">03</span>
+                <div className="feature-icon">✳</div>
+                <h3>Organiziraj dogodke</h3>
+                <p>
+                  Ustvari dogodek, predstavi svojo organizacijo in upravljaj
+                  prijave udeležencev.
+                </p>
+              </article>
+            </div>
+          </section>
+        )}
       </main>
 
-      <footer className="footer">
-        <a href="#" className="brand footer-brand">
-          <span className="brand-icon">E</span>
-          <span>eventflow</span>
-        </a>
+      {registrationView === 'closed' && organizerView === 'home' && (
+        <footer className="footer">
+          <a
+            href="#"
+            className="brand footer-brand"
+            onClick={(event) => {
+              event.preventDefault()
+              setOrganizerView('home')
+            }}
+          >
+            <span className="brand-icon">E</span>
+            <span>eventflow</span>
+          </a>
 
-        <span>Organiziraj. Poveži. Doživi.</span>
-        <span>© 2026 EventFlow</span>
-      </footer>
+          <span>Organiziraj. Poveži. Doživi.</span>
+          <span>© 2026 EventFlow</span>
+        </footer>
+      )}
     </div>
   )
 }

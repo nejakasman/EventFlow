@@ -1,0 +1,293 @@
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --eventflow-purple: #805cf0;
+    --eventflow-purple-dark: #6946df;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    margin: 0 !important;
+    min-height: 100vh !important;
+    font-family: 'DM Sans', sans-serif !important;
+    color: white !important;
+    background-color: #211044 !important;
+    background-image:
+        linear-gradient(
+            180deg,
+            rgba(20, 9, 47, 0.68),
+            rgba(34, 13, 76, 0.48)
+        ),
+        url('../img/concert-hero.png') !important;
+    background-size: cover !important;
+    background-position: center 45% !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+}
+
+/* Glavna postavitev */
+.login-pf,
+.login-pf-page {
+    min-height: 100vh !important;
+    background: transparent !important;
+}
+
+.login-pf-page {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 40px 20px !important;
+}
+
+/* Naslov EventFlow */
+#kc-header {
+    width: 100% !important;
+    margin-bottom: 25px !important;
+}
+
+#kc-header-wrapper {
+    font-family: 'Manrope', sans-serif !important;
+    font-size: 30px !important;
+    font-weight: 800 !important;
+    color: white !important;
+    text-align: center !important;
+    letter-spacing: -1px;
+}
+
+/* Vsebina */
+#kc-content {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin: 0 auto !important;
+}
+
+#kc-content-wrapper {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin: 0 auto !important;
+}
+
+#kc-form-wrapper,
+#kc-form,
+#kc-info-wrapper {
+    width: 100% !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+/* Vijolični prosojni obrazec */
+.card-pf {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin: 0 auto !important;
+    padding: 30px !important;
+    background: rgba(30, 15, 65, 0.78) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+    backdrop-filter: blur(16px) !important;
+}
+
+/* Odstranitev privzetega ozadja obrazca */
+#kc-form-login {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Oznake polj */
+#kc-form-wrapper label {
+    color: white !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+}
+
+/* Vnosna polja */
+#kc-form-wrapper input[type="text"],
+#kc-form-wrapper input[type="password"],
+#kc-form-wrapper input[type="email"] {
+    width: 100% !important;
+    padding: 13px 14px !important;
+    border: 1px solid #e6e1ef !important;
+    border-radius: 9px !important;
+    background: white !important;
+    color: #20202c !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+}
+
+#kc-form-wrapper input:focus {
+    border-color: #9279ec !important;
+    box-shadow: 0 0 0 3px rgba(116, 87, 232, 0.1) !important;
+    outline: none !important;
+}
+
+/* Gumb za prijavo */
+#kc-login,
+input[type="submit"] {
+    width: 100% !important;
+    padding: 14px 20px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    background: var(--eventflow-purple) !important;
+    color: white !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    transition: 0.2s ease;
+}
+
+#kc-login:hover,
+input[type="submit"]:hover {
+    background: var(--eventflow-purple-dark) !important;
+}
+
+/* Povezave */
+a {
+    color: #c8b9ff !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+a:hover {
+    color: white !important;
+}
+
+/* Sporočila o napakah */
+#input-error,
+.alert-error,
+.kc-feedback-text {
+    color: #ffd5d5 !important;
+}
+
+/* Mobilni prikaz */
+@media (max-width: 600px) {
+    .login-pf-page {
+        padding: 25px 15px !important;
+    }
+
+    .card-pf {
+        padding: 20px !important;
+    }
+
+    #kc-header-wrapper {
+        font-size: 25px !important;
+    }
+
+    body {
+        background-position: center !important;
+    }
+}
+
+
+/* EventFlow navigacija na Keycloak straneh */
+
+.eventflow-navbar {
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    right: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 45px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.eventflow-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: white !important;
+    font-family: 'Manrope', sans-serif !important;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    text-decoration: none !important;
+}
+
+.eventflow-brand-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: #7457e8;
+    color: white;
+    font-size: 20px;
+}
+
+.eventflow-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 35px;
+}
+
+.eventflow-nav-links a {
+    color: rgba(255, 255, 255, 0.78) !important;
+    font-size: 14px;
+    text-decoration: none !important;
+}
+
+.eventflow-nav-links a:hover {
+    color: white !important;
+}
+
+.eventflow-home-button {
+    display: inline-block;
+    padding: 11px 19px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: white !important;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: 0.2s ease;
+}
+
+.eventflow-home-button:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+@media (max-width: 600px) {
+    .eventflow-navbar {
+        padding: 17px 15px;
+        gap: 10px;
+    }
+
+    .eventflow-brand {
+        font-size: 17px;
+    }
+
+    .eventflow-brand-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .eventflow-nav-links {
+        display: none;
+    }
+
+    .eventflow-home-button {
+        padding: 9px 11px;
+        font-size: 12px;
+    }
+}
