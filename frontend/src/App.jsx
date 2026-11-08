@@ -39,6 +39,12 @@ function App() {
   const [eventsError, setEventsError] = useState(false)
   const [publishingEventId, setPublishingEventId] = useState(null)
 
+  const [myRegistrations, setMyRegistrations] = useState([])
+  const [myRegistrationsLoading, setMyRegistrationsLoading] = useState(false)
+  const [myRegistrationsMessage, setMyRegistrationsMessage] = useState('')
+  const [myRegistrationsError, setMyRegistrationsError] = useState(false)
+  const [cancellingRegistrationId, setCancellingRegistrationId] = useState(null)
+
   const [publicEvents, setPublicEvents] = useState([])
   const [publicEventsLoading, setPublicEventsLoading] = useState(false)
   const [publicEventsError, setPublicEventsError] = useState('')
@@ -266,6 +272,89 @@ function App() {
     setRegistrationView('closed')
     loadMyEvents()
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const loadMyRegistrations = async () => {
+    setMyRegistrationsLoading(true)
+    setMyRegistrationsMessage('')
+    setMyRegistrationsError(false)
+
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/registrations/my',
+        {
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Pridobivanje prijav ni uspelo.'
+        )
+      }
+
+      setMyRegistrations(data.registrations || [])
+    } catch (error) {
+      setMyRegistrationsError(true)
+      setMyRegistrationsMessage(error.message)
+    } finally {
+      setMyRegistrationsLoading(false)
+    }
+  }
+
+  const handleOpenMyRegistrations = () => {
+    setOrganizerView('myRegistrations')
+    setRegistrationView('closed')
+    loadMyRegistrations()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleCancelRegistration = async (registration) => {
+    const confirmed = window.confirm(
+      `Ali res želiš odpovedati prijavo na dogodek "${registration.title}"?`
+    )
+
+    if (!confirmed) return
+
+    setCancellingRegistrationId(registration.registration_id)
+    setMyRegistrationsMessage('')
+    setMyRegistrationsError(false)
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events/${registration.event_id}/cancel-registration`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Odpoved prijave ni uspela.'
+        )
+      }
+
+      await loadMyRegistrations()
+
+      setMyRegistrationsMessage(
+        'Prijava je bila uspešno odpovedana.'
+      )
+    } catch (error) {
+      setMyRegistrationsError(true)
+      setMyRegistrationsMessage(error.message)
+    } finally {
+      setCancellingRegistrationId(null)
+    }
   }
 
   const handlePublishEvent = async (eventId) => {
@@ -539,6 +628,19 @@ function App() {
                 </>
               )}
 
+              {isParticipant && !isOrganizer && (
+                <button
+                  className={`button ${
+                    organizerView === 'myRegistrations'
+                      ? 'button-primary'
+                      : 'button-outline'
+                  }`}
+                  onClick={handleOpenMyRegistrations}
+                >
+                  Moje prijave
+                </button>
+              )}
+
               <span className="nav-user">{userName}</span>
 
               <button
@@ -574,11 +676,13 @@ function App() {
             registrationView !== 'closed' ||
             organizerView === 'create' ||
             organizerView === 'myEvents' ||
+            organizerView === 'myRegistrations' ||
             organizerView === 'discover'
               ? 'hero-registration'
               : ''
           } ${
-            organizerView === 'myEvents'
+            organizerView === 'myEvents' ||
+            organizerView === 'myRegistrations'
               ? 'hero-my-events'
               : organizerView === 'discover'
                 ? 'hero-discover'
@@ -895,6 +999,168 @@ function App() {
 
                 <button
                   className="back-link discover-back-link"
+                  onClick={() => setOrganizerView('home')}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
+            ) : organizerView === 'myRegistrations' && isParticipant ? (
+              <div className="my-events-panel my-registrations-panel">
+                <span className="section-label">MOJ EVENTFLOW</span>
+
+                <h1>
+                  Moje <span>prijave.</span>
+                </h1>
+
+                <p className="form-description">
+                  Tukaj lahko spremljaš dogodke, na katere si prijavljen/a,
+                  in po potrebi odpoveš svojo prijavo.
+                </p>
+
+                {myRegistrationsMessage && (
+                  <div
+                    className={`form-message ${
+                      myRegistrationsError ? 'form-error' : 'form-success'
+                    }`}
+                  >
+                    {myRegistrationsMessage}
+                  </div>
+                )}
+
+                {myRegistrationsLoading ? (
+                  <div className="events-info">
+                    Nalaganje prijav ...
+                  </div>
+                ) : myRegistrationsError && myRegistrations.length === 0 ? (
+                  <div className="events-empty">
+                    <h2>Prijav ni bilo mogoče naložiti.</h2>
+                    <p>{myRegistrationsMessage}</p>
+                    <button
+                      className="button button-primary"
+                      onClick={loadMyRegistrations}
+                    >
+                      Poskusi znova
+                    </button>
+                  </div>
+                ) : myRegistrations.length === 0 ? (
+                  <div className="events-empty">
+                    <div className="events-empty-icon">✳</div>
+                    <h2>Še nimaš prijav.</h2>
+                    <p>
+                      Ko se prijaviš na dogodek, se bo ta prikazal tukaj.
+                    </p>
+                    <button
+                      className="button button-primary"
+                      onClick={() => handleOpenDiscover()}
+                    >
+                      Odkrij dogodke
+                    </button>
+                  </div>
+                ) : (
+                  <div className="my-events-list my-registrations-list">
+                    {myRegistrations.map(registration => (
+                      <article
+                        className="my-event-card my-registration-card"
+                        key={registration.registration_id}
+                      >
+                        <div className="my-event-card-top">
+                          <span className="my-event-category">
+                            {registration.category_name}
+                          </span>
+
+                          <span
+                            className={`event-status ${
+                              registration.registration_status === 'CONFIRMED'
+                                ? 'registration-status-confirmed'
+                                : registration.registration_status === 'WAITLISTED'
+                                  ? 'registration-status-waitlisted'
+                                  : 'registration-status-cancelled'
+                            }`}
+                          >
+                            {registration.registration_status === 'CONFIRMED'
+                              ? 'Potrjena prijava'
+                              : registration.registration_status === 'WAITLISTED'
+                                ? 'Čakalni seznam'
+                                : 'Odpovedana'}
+                          </span>
+                        </div>
+
+                        <h2>{registration.title}</h2>
+
+                        {registration.description && (
+                          <p className="my-event-description">
+                            {registration.description}
+                          </p>
+                        )}
+
+                        <div className="my-event-details">
+                          <div>
+                            <span className="event-detail-label">
+                              Lokacija
+                            </span>
+                            <span>{registration.location}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Začetek dogodka
+                            </span>
+                            <span>
+                              {formatDate(registration.start_date)}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Konec dogodka
+                            </span>
+                            <span>
+                              {formatDate(registration.end_date)}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Organizator
+                            </span>
+                            <span>{registration.organization_name}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Datum prijave
+                            </span>
+                            <span>
+                              {formatDate(registration.registration_date)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {(registration.registration_status === 'CONFIRMED' ||
+                          registration.registration_status === 'WAITLISTED') && (
+                          <button
+                            className="button button-outline cancel-registration-button"
+                            onClick={() =>
+                              handleCancelRegistration(registration)
+                            }
+                            disabled={
+                              cancellingRegistrationId ===
+                              registration.registration_id
+                            }
+                          >
+                            {cancellingRegistrationId ===
+                            registration.registration_id
+                              ? 'Odpovedovanje ...'
+                              : 'Odpovej prijavo'}
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  className="back-link"
                   onClick={() => setOrganizerView('home')}
                 >
                   ← Nazaj na začetno stran

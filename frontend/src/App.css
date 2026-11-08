@@ -1672,3 +1672,69 @@ a {
 .registration-error {
   color: #b54242;
 }
+
+
+/* Moje prijave */
+
+.registration-status-confirmed {
+  background: #e6f6ed;
+  color: #27834e;
+}
+
+.registration-status-waitlisted {
+  background: #fff3df;
+  color: #a66b17;
+}
+
+.registration-status-cancelled {
+  background: #f0eef4;
+  color: #858292;
+}
+
+.my-registrations-panel {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.my-registrations-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.my-registration-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.my-registration-card h2 {
+  overflow-wrap: anywhere;
+}
+
+.my-registration-card .my-event-description {
+  overflow-wrap: anywhere;
+}
+
+.cancel-registration-button {
+  align-self: flex-start;
+  margin-top: 20px;
+  border-color: #e5caca;
+  background: #fff;
+  color: #a33a3a;
+}
+
+.cancel-registration-button:hover {
+  background: #fff3f3;
+  border-color: #dbaaaa;
+}
+
+.cancel-registration-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 800px) {
+  .my-registrations-list {
+    grid-template-columns: 1fr;
+  }
+}

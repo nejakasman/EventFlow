@@ -383,6 +383,7 @@ app.post(
 );
 
 
+
 app.post(
   "/api/events/:id/register",
   authenticateToken,
@@ -507,33 +508,74 @@ app.post(
         });
       }
 
-      const result = await client.query(
-        `INSERT INTO registrations (
-          event_id,
-          user_keycloak_id,
-          status
-        )
-        VALUES ($1, $2, $3)
-        RETURNING *`,
-        [eventId, userId, registrationStatus]
+      const cancelledRegistration = await client.query(
+        `SELECT id
+         FROM registrations
+         WHERE event_id = $1
+           AND user_keycloak_id = $2
+           AND status = 'CANCELLED'
+         ORDER BY id DESC
+         LIMIT 1
+         FOR UPDATE`,
+        [eventId, userId]
       );
+
+      let result;
+      let reactivated = false;
+
+      if (cancelledRegistration.rows.length > 0) {
+        // Ponovno aktiviramo obstoječo prijavo.
+        result = await client.query(
+          `UPDATE registrations
+           SET status = $1,
+               created_at = CURRENT_TIMESTAMP
+           WHERE id = $2
+           RETURNING *`,
+          [
+            registrationStatus,
+            cancelledRegistration.rows[0].id
+          ]
+        );
+
+        reactivated = true;
+      } else {
+        // Ustvarimo novo prijavo.
+        result = await client.query(
+          `INSERT INTO registrations (
+            event_id,
+            user_keycloak_id,
+            status
+          )
+          VALUES ($1, $2, $3)
+          RETURNING *`,
+          [eventId, userId, registrationStatus]
+        );
+      }
 
       await client.query("COMMIT");
       transactionStarted = false;
 
-      const message =
-        registrationStatus === "CONFIRMED"
-          ? "Uspešno ste se prijavili na dogodek."
-          : "Dogodek je poln. Uspešno ste se uvrstili na čakalni seznam.";
+      let message;
 
-      return res.status(201).json({
+      if (registrationStatus === "CONFIRMED") {
+        message = reactivated
+          ? "Vaša prijava je bila uspešno ponovno aktivirana."
+          : "Uspešno ste se prijavili na dogodek.";
+      } else {
+        message = reactivated
+          ? "Ponovna prijava je bila uspešna. Uvrščeni ste na čakalni seznam."
+          : "Dogodek je poln. Uspešno ste se uvrstili na čakalni seznam.";
+      }
+
+      return res.status(reactivated ? 200 : 201).json({
         message,
         registration: result.rows[0],
         confirmedCount:
           registrationStatus === "CONFIRMED"
             ? confirmedCount + 1
             : confirmedCount,
-        maxParticipants: event.max_participants
+        maxParticipants: event.max_participants,
+        reactivated
       });
     } catch (error) {
       if (transactionStarted) {
@@ -556,6 +598,7 @@ app.post(
     }
   }
 );
+
 
 app.patch(
   "/api/events/:id/cancel-registration",
