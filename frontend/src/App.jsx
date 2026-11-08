@@ -46,11 +46,18 @@ function App() {
   const [eventCategoryFilter, setEventCategoryFilter] = useState('')
   const [eventDateFilter, setEventDateFilter] = useState('')
 
-  const user = keycloak.tokenParsed
+  const [registrationStatuses, setRegistrationStatuses] = useState({})
+  const [registrationMessages, setRegistrationMessages] = useState({})
+  const [registeringEventId, setRegisteringEventId] = useState(null)
 
+  const user = keycloak.tokenParsed
   const userRoles = user?.realm_access?.roles || []
+
   const isOrganizer =
     isAuthenticated && userRoles.includes('ORGANIZER')
+
+  const isParticipant =
+    isAuthenticated && userRoles.includes('PARTICIPANT')
 
   const userName =
     user?.given_name ||
@@ -368,6 +375,72 @@ function App() {
     loadPublicEvents()
   }
 
+  const handleEventRegistration = async (eventId) => {
+    if (!isAuthenticated) {
+      keycloak.login()
+      return
+    }
+
+    if (!isParticipant || isOrganizer) {
+      return
+    }
+
+    setRegisteringEventId(eventId)
+
+    setRegistrationMessages(previous => ({
+      ...previous,
+      [eventId]: ''
+    }))
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events/${eventId}/register`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.registration?.status) {
+        setRegistrationStatuses(previous => ({
+          ...previous,
+          [eventId]: data.registration.status
+        }))
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Prijava na dogodek ni uspela.')
+      }
+
+      const status = data.registration?.status
+
+      setRegistrationStatuses(previous => ({
+        ...previous,
+        [eventId]: status
+      }))
+
+      setRegistrationMessages(previous => ({
+        ...previous,
+        [eventId]:
+          status === 'WAITLISTED'
+            ? 'Dogodek je poln. Uspešno si dodan/a na čakalni seznam.'
+            : 'Uspešno si prijavljen/a na dogodek!'
+      }))
+    } catch (error) {
+      setRegistrationMessages(previous => ({
+        ...previous,
+        [eventId]: error.message
+      }))
+    } finally {
+      setRegisteringEventId(null)
+    }
+  }
+
   const formatDate = (date) => {
     if (!date) return ''
 
@@ -548,10 +621,7 @@ function App() {
                     }`}
                     onClick={() => handleOpenDiscover('1')}
                   >
-                    <img
-                      src="/images/events/koncerti.jpg"
-                      alt="Koncerti"
-                    />
+                    <img src="/images/events/koncerti.jpg" alt="Koncerti" />
                     <span className="category-tile-overlay"></span>
                     <span className="category-tile-content">
                       <small>01 / GLASBA</small>
@@ -568,10 +638,7 @@ function App() {
                     }`}
                     onClick={() => handleOpenDiscover('2')}
                   >
-                    <img
-                      src="/images/events/sport.jpg"
-                      alt="Šport"
-                    />
+                    <img src="/images/events/sport.jpg" alt="Šport" />
                     <span className="category-tile-overlay"></span>
                     <span className="category-tile-content">
                       <small>02 / AKTIVNOST</small>
@@ -608,10 +675,7 @@ function App() {
                     }`}
                     onClick={() => handleOpenDiscover('4')}
                   >
-                    <img
-                      src="/images/events/kultura.jpg"
-                      alt="Kultura"
-                    />
+                    <img src="/images/events/kultura.jpg" alt="Kultura" />
                     <span className="category-tile-overlay"></span>
                     <span className="category-tile-content">
                       <small>04 / UMETNOST</small>
@@ -648,9 +712,7 @@ function App() {
                     onSubmit={handleApplyEventFilters}
                   >
                     <div className="discover-search">
-                      <label htmlFor="event-search">
-                        Išči dogodek
-                      </label>
+                      <label htmlFor="event-search">Išči dogodek</label>
                       <input
                         id="event-search"
                         type="text"
@@ -781,6 +843,49 @@ function App() {
                                 →
                               </span>
                             </div>
+
+                            {!isOrganizer &&
+                              (!isAuthenticated || isParticipant) && (
+                                <div className="event-registration">
+                                  <button
+                                    className="button button-primary event-register-button"
+                                    onClick={() =>
+                                      handleEventRegistration(event.id)
+                                    }
+                                    disabled={
+                                      registeringEventId === event.id ||
+                                      registrationStatuses[event.id] ===
+                                        'CONFIRMED' ||
+                                      registrationStatuses[event.id] ===
+                                        'WAITLISTED'
+                                    }
+                                  >
+                                    {registeringEventId === event.id
+                                      ? 'Prijavljanje ...'
+                                      : registrationStatuses[event.id] ===
+                                          'CONFIRMED'
+                                        ? 'Prijavljen/a'
+                                        : registrationStatuses[event.id] ===
+                                            'WAITLISTED'
+                                          ? 'Na čakalnem seznamu'
+                                          : isAuthenticated
+                                            ? 'Prijavi se na dogodek'
+                                            : 'Prijavi se'}
+                                  </button>
+
+                                  {registrationMessages[event.id] && (
+                                    <p
+                                      className={`event-registration-message ${
+                                        registrationStatuses[event.id]
+                                          ? 'registration-success'
+                                          : 'registration-error'
+                                      }`}
+                                    >
+                                      {registrationMessages[event.id]}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                           </div>
                         </article>
                       ))}
