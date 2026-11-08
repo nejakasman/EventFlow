@@ -145,12 +145,14 @@ app.post("/api/users/me", authenticateToken, async (req, res) => {
 app.get("/api/db-test", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
+
     res.json({
       message: "Povezava s PostgreSQL je uspešna.",
       time: result.rows[0].now
     });
   } catch (error) {
     console.error("Napaka PostgreSQL:", error);
+
     res.status(500).json({
       message: "Napaka pri povezavi s PostgreSQL."
     });
@@ -168,7 +170,6 @@ app.get(
     });
   }
 );
-
 
 app.post("/api/organizations/register", async (req, res) => {
   const name = req.body.name?.trim();
@@ -225,11 +226,11 @@ app.post("/api/organizations/register", async (req, res) => {
     }
 
     console.error("Napaka pri registraciji organizacije:", {
-  status: error.response?.status,
-  url: error.config?.url,
-  method: error.config?.method,
-  data: error.response?.data
-});
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.response?.data
+    });
 
     if (
       error.code === "23505" ||
@@ -246,8 +247,11 @@ app.post("/api/organizations/register", async (req, res) => {
   }
 });
 
-
-app.post("/api/events", authenticateToken, requireRole("ORGANIZER"), async (req, res) => {
+app.post(
+  "/api/events",
+  authenticateToken,
+  requireRole("ORGANIZER"),
+  async (req, res) => {
     const {
       title,
       description,
@@ -379,6 +383,180 @@ app.post("/api/events", authenticateToken, requireRole("ORGANIZER"), async (req,
 );
 
 
+app.post(
+  "/api/events/:id/register",
+  authenticateToken,
+  requireRole("PARTICIPANT"),
+  async (req, res) => {
+    const eventId = Number(req.params.id);
+    const userId = req.user.id;
+
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return res.status(400).json({
+        message: "Neveljaven ID dogodka."
+      });
+    }
+
+    const client = await pool.connect();
+    let transactionStarted = false;
+
+    try {
+      await client.query("BEGIN");
+      transactionStarted = true;
+
+      const eventResult = await client.query(
+        `SELECT
+          id,
+          status,
+          max_participants,
+          waitlist_enabled,
+          registration_deadline > CURRENT_TIMESTAMP AS registration_open
+         FROM events
+         WHERE id = $1
+         FOR UPDATE`,
+        [eventId]
+      );
+
+      if (eventResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          message: "Dogodek ne obstaja."
+        });
+      }
+
+      const event = eventResult.rows[0];
+
+      if (event.status !== "PUBLISHED") {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          message: "Prijava je mogoča samo na objavljene dogodke."
+        });
+      }
+
+      if (!event.registration_open) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          message: "Rok za prijavo na ta dogodek je že potekel."
+        });
+      }
+
+      const userResult = await client.query(
+        `SELECT keycloak_id
+         FROM users
+         WHERE keycloak_id = $1`,
+        [userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          message: "Podatki uporabnika niso najdeni."
+        });
+      }
+
+      const existingRegistration = await client.query(
+        `SELECT id, status
+         FROM registrations
+         WHERE event_id = $1
+           AND user_keycloak_id = $2
+           AND status IN ('CONFIRMED', 'WAITLISTED')
+         LIMIT 1`,
+        [eventId, userId]
+      );
+
+      if (existingRegistration.rows.length > 0) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          message: "Na ta dogodek ste že prijavljeni.",
+          registration: existingRegistration.rows[0]
+        });
+      }
+
+      const countResult = await client.query(
+        `SELECT COUNT(*)::integer AS confirmed_count
+         FROM registrations
+         WHERE event_id = $1
+           AND status = 'CONFIRMED'`,
+        [eventId]
+      );
+
+      const confirmedCount = countResult.rows[0].confirmed_count;
+
+      let registrationStatus;
+
+      if (confirmedCount < event.max_participants) {
+        registrationStatus = "CONFIRMED";
+      } else if (event.waitlist_enabled) {
+        registrationStatus = "WAITLISTED";
+      } else {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          message: "Dogodek je že poln in čakalni seznam ni omogočen."
+        });
+      }
+
+      const result = await client.query(
+        `INSERT INTO registrations (
+          event_id,
+          user_keycloak_id,
+          status
+        )
+        VALUES ($1, $2, $3)
+        RETURNING *`,
+        [eventId, userId, registrationStatus]
+      );
+
+      await client.query("COMMIT");
+      transactionStarted = false;
+
+      const message =
+        registrationStatus === "CONFIRMED"
+          ? "Uspešno ste se prijavili na dogodek."
+          : "Dogodek je poln. Uspešno ste se uvrstili na čakalni seznam.";
+
+      return res.status(201).json({
+        message,
+        registration: result.rows[0],
+        confirmedCount:
+          registrationStatus === "CONFIRMED"
+            ? confirmedCount + 1
+            : confirmedCount,
+        maxParticipants: event.max_participants
+      });
+    } catch (error) {
+      if (transactionStarted) {
+        await client.query("ROLLBACK");
+      }
+
+      if (error.code === "23505") {
+        return res.status(409).json({
+          message: "Na ta dogodek ste že prijavljeni."
+        });
+      }
+
+      console.error("Napaka pri prijavi na dogodek:", error);
+
+      return res.status(500).json({
+        message: "Pri prijavi na dogodek je prišlo do napake."
+      });
+    } finally {
+      client.release();
+    }
+  }
+);
+
 app.get(
   "/api/events/my",
   authenticateToken,
@@ -389,10 +567,10 @@ app.get(
         `SELECT
           events.*,
           categories.name AS category_name
-        FROM events
-        JOIN categories ON events.category_id = categories.id
-        WHERE events.organization_keycloak_id = $1
-        ORDER BY events.created_at DESC`,
+         FROM events
+         JOIN categories ON events.category_id = categories.id
+         WHERE events.organization_keycloak_id = $1
+         ORDER BY events.created_at DESC`,
         [req.user.id]
       );
 
@@ -408,8 +586,6 @@ app.get(
     }
   }
 );
-
-
 
 app.get("/api/events", async (req, res) => {
   const { search, categoryId, date } = req.query;
@@ -460,12 +636,12 @@ app.get("/api/events", async (req, res) => {
         events.category_id,
         categories.name AS category_name,
         organizations.name AS organization_name
-      FROM events
-      JOIN categories ON events.category_id = categories.id
-      JOIN organizations
-        ON events.organization_keycloak_id = organizations.keycloak_id
-      WHERE ${conditions.join(" AND ")}
-      ORDER BY events.start_date ASC`,
+       FROM events
+       JOIN categories ON events.category_id = categories.id
+       JOIN organizations
+         ON events.organization_keycloak_id = organizations.keycloak_id
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY events.start_date ASC`,
       values
     );
 
@@ -480,7 +656,6 @@ app.get("/api/events", async (req, res) => {
     });
   }
 });
-
 
 app.patch(
   "/api/events/:id/publish",
@@ -539,7 +714,6 @@ app.patch(
     }
   }
 );
-
 
 app.listen(PORT, () => {
   console.log(`EventFlow backend deluje na portu ${PORT}`);

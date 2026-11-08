@@ -1632,3 +1632,43 @@ a {
     align-self: flex-start;
   }
 }
+
+/* Prijava na dogodek */
+
+.event-registration {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid #f0eef4;
+}
+
+.event-register-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 15px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.event-register-button:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.event-registration-message {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.registration-success {
+  color: #27834e;
+}
+
+.registration-error {
+  color: #b54242;
+}
