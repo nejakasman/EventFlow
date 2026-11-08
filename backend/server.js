@@ -383,6 +383,7 @@ app.post(
 );
 
 
+
 app.post(
   "/api/events/:id/register",
   authenticateToken,
@@ -507,33 +508,74 @@ app.post(
         });
       }
 
-      const result = await client.query(
-        `INSERT INTO registrations (
-          event_id,
-          user_keycloak_id,
-          status
-        )
-        VALUES ($1, $2, $3)
-        RETURNING *`,
-        [eventId, userId, registrationStatus]
+      const cancelledRegistration = await client.query(
+        `SELECT id
+         FROM registrations
+         WHERE event_id = $1
+           AND user_keycloak_id = $2
+           AND status = 'CANCELLED'
+         ORDER BY id DESC
+         LIMIT 1
+         FOR UPDATE`,
+        [eventId, userId]
       );
+
+      let result;
+      let reactivated = false;
+
+      if (cancelledRegistration.rows.length > 0) {
+        // Ponovno aktiviramo obstoječo prijavo.
+        result = await client.query(
+          `UPDATE registrations
+           SET status = $1,
+               created_at = CURRENT_TIMESTAMP
+           WHERE id = $2
+           RETURNING *`,
+          [
+            registrationStatus,
+            cancelledRegistration.rows[0].id
+          ]
+        );
+
+        reactivated = true;
+      } else {
+        // Ustvarimo novo prijavo.
+        result = await client.query(
+          `INSERT INTO registrations (
+            event_id,
+            user_keycloak_id,
+            status
+          )
+          VALUES ($1, $2, $3)
+          RETURNING *`,
+          [eventId, userId, registrationStatus]
+        );
+      }
 
       await client.query("COMMIT");
       transactionStarted = false;
 
-      const message =
-        registrationStatus === "CONFIRMED"
-          ? "Uspešno ste se prijavili na dogodek."
-          : "Dogodek je poln. Uspešno ste se uvrstili na čakalni seznam.";
+      let message;
 
-      return res.status(201).json({
+      if (registrationStatus === "CONFIRMED") {
+        message = reactivated
+          ? "Vaša prijava je bila uspešno ponovno aktivirana."
+          : "Uspešno ste se prijavili na dogodek.";
+      } else {
+        message = reactivated
+          ? "Ponovna prijava je bila uspešna. Uvrščeni ste na čakalni seznam."
+          : "Dogodek je poln. Uspešno ste se uvrstili na čakalni seznam.";
+      }
+
+      return res.status(reactivated ? 200 : 201).json({
         message,
         registration: result.rows[0],
         confirmedCount:
           registrationStatus === "CONFIRMED"
             ? confirmedCount + 1
             : confirmedCount,
-        maxParticipants: event.max_participants
+        maxParticipants: event.max_participants,
+        reactivated
       });
     } catch (error) {
       if (transactionStarted) {
@@ -556,6 +598,7 @@ app.post(
     }
   }
 );
+
 
 app.patch(
   "/api/events/:id/cancel-registration",
@@ -678,6 +721,51 @@ app.get(
 
       return res.status(500).json({
         message: "Pri pridobivanju dogodkov je prišlo do napake."
+      });
+    }
+  }
+);
+
+app.get(
+  "/api/registrations/my",
+  authenticateToken,
+  requireRole("PARTICIPANT"),
+  async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+      const result = await pool.query(
+        `SELECT
+          r.id AS registration_id,
+          r.status AS registration_status,
+          r.created_at AS registration_date,
+          e.id AS event_id,
+          e.title,
+          e.description,
+          e.location,
+          e.start_date,
+          e.end_date,
+          e.registration_deadline,
+          e.max_participants,
+          c.name AS category_name,
+          o.name AS organization_name
+        FROM registrations r
+        JOIN events e ON r.event_id = e.id
+        JOIN categories c ON e.category_id = c.id
+        JOIN organizations o ON e.organization_keycloak_id = o.keycloak_id
+        WHERE r.user_keycloak_id = $1
+        ORDER BY e.start_date ASC`,
+        [userId]
+      );
+
+      return res.status(200).json({
+        registrations: result.rows
+      });
+    } catch (error) {
+      console.error("Napaka pri pridobivanju lastnih prijav:", error);
+
+      return res.status(500).json({
+        message: "Pri pridobivanju prijav je prišlo do napake."
       });
     }
   }
