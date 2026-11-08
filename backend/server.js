@@ -683,6 +683,51 @@ app.get(
   }
 );
 
+app.get(
+  "/api/registrations/my",
+  authenticateToken,
+  requireRole("PARTICIPANT"),
+  async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+      const result = await pool.query(
+        `SELECT
+          r.id AS registration_id,
+          r.status AS registration_status,
+          r.created_at AS registration_date,
+          e.id AS event_id,
+          e.title,
+          e.description,
+          e.location,
+          e.start_date,
+          e.end_date,
+          e.registration_deadline,
+          e.max_participants,
+          c.name AS category_name,
+          o.name AS organization_name
+        FROM registrations r
+        JOIN events e ON r.event_id = e.id
+        JOIN categories c ON e.category_id = c.id
+        JOIN organizations o ON e.organization_keycloak_id = o.keycloak_id
+        WHERE r.user_keycloak_id = $1
+        ORDER BY e.start_date ASC`,
+        [userId]
+      );
+
+      return res.status(200).json({
+        registrations: result.rows
+      });
+    } catch (error) {
+      console.error("Napaka pri pridobivanju lastnih prijav:", error);
+
+      return res.status(500).json({
+        message: "Pri pridobivanju prijav je prišlo do napake."
+      });
+    }
+  }
+);
+
 app.get("/api/events", async (req, res) => {
   const { search, categoryId, date } = req.query;
 
