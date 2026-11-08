@@ -2,20 +2,24 @@
 
 ## Opis projekta
 
-EventFlow je spletna aplikacija, namenjena enostavnejši organizaciji dogodkov ter preglednemu upravljanju dogodkov in prijav udeležencev na enem mestu. Obiskovalcem omogoča pregledovanje in filtriranje objavljenih dogodkov, registriranim uporabnikom pa prijavo na izbrane dogodke, spremljanje statusa prijave in njeno odpoved. Organizacije lahko prek aplikacije ustvarjajo, objavljajo in upravljajo svoje dogodke ter spremljajo prijave udeležencev. Če je dogodek že zapolnjen, se lahko novi prijavljeni uvrstijo na čakalni seznam in počakajo na sprostitev prostega mesta.
+EventFlow je spletna aplikacija, namenjena enostavnejši organizaciji dogodkov ter preglednemu upravljanju dogodkov in prijav udeležencev na enem mestu.
+
+Obiskovalcem omogoča pregledovanje in filtriranje objavljenih dogodkov, registriranim uporabnikom pa prijavo na izbrane dogodke, spremljanje statusa prijave in njeno odpoved. Organizacije lahko prek aplikacije ustvarjajo, objavljajo in upravljajo svoje dogodke ter spremljajo prijave udeležencev.
+
+Če je dogodek že zapolnjen, se lahko novi prijavljeni uvrstijo na čakalni seznam in počakajo na sprostitev prostega mesta.
 
 ## Uporabljene tehnologije
 
 - **Frontend:** React, JavaScript, HTML, CSS
 - **Backend:** Node.js, Express
 - **Podatkovna baza:** PostgreSQL
-- **Avtentikacija:** Keycloak
+- **Avtentikacija in upravljanje uporabnikov:** Keycloak
 - **Komunikacija:** REST API
 - **Razvojno okolje:** Docker, Docker Compose
 
 ## Dokumentacija
 
-Projektna dokumentacija je na voljo v mapi [`docs/`](docs/).
+Projektna dokumentacija je na voljo v mapi [docs/](docs/).
 
 - [Zasnova rešitve](docs/01-zasnova-resitve.md)
 - [Funkcionalnosti in obseg](docs/02-funkcionalnosti-in-obseg.md)
@@ -40,27 +44,42 @@ Za lokalni zagon projekta potrebujemo:
 Repozitorij kloniramo in se premaknemo v projektno mapo:
 
 ```bash
-git clone URL_REPOZITORIJA
+git clone https://github.com/nejakasman/EventFlow.git
 cd EventFlow
 ```
 
 ### 3. Nastavitev okolja
 
-V korenski mapi projekta se nahaja datoteka `.env.example`, ki vsebuje primer potrebnih okoljskih spremenljivk.
+Projekt uporablja dve datoteki z okoljskimi spremenljivkami.
 
-Iz nje ustvarimo datoteko `.env`:
+V korenski mapi projekta se nahaja `.env.example`, iz katere ustvarimo `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-V datoteki `.env` nastavimo svoja gesla za obe PostgreSQL podatkovni bazi in administratorski račun Keycloaka.
+V datoteki nastavimo gesla za PostgreSQL podatkovni bazi in administratorski račun Keycloaka.
 
-Datoteka `.env` vsebuje občutljive podatke in se ne shranjuje v Git repozitorij.
+V mapi `backend` se nahaja še druga datoteka `.env.example`, iz katere ustvarimo backendovo `.env`:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+V njej so nastavitve za povezavo backenda s Keycloakom. Vrednost `KEYCLOAK_BACKEND_CLIENT_SECRET` dopolnimo s Client Secretom, ki ga pridobimo pri nastavitvi backend clienta v Keycloaku.
+
+Datoteki `.env` vsebujeta občutljive podatke in se ne shranjujeta v Git repozitorij.
 
 ### 4. Zagon Docker storitev
 
-V korenski mapi projekta zaženemo:
+Vrnemo se v korensko mapo projekta:
+
+```bash
+cd ..
+```
+
+Zaženemo Docker Desktop in nato v korenski mapi projekta izvedemo:
 
 ```bash
 docker compose up -d
@@ -82,17 +101,15 @@ docker compose ps
 
 Keycloakova administracijska konzola je dostopna na naslovu:
 
-http://localhost:8081
+[http://localhost:8081](http://localhost:8081)
 
-Za prijavo uporabimo administratorsko uporabniško ime in geslo iz datoteke `.env` (`KEYCLOAK_ADMIN` in `KEYCLOAK_ADMIN_PASSWORD`).
+Za prijavo uporabimo administratorsko uporabniško ime in geslo iz korenske datoteke `.env` (`KEYCLOAK_ADMIN` in `KEYCLOAK_ADMIN_PASSWORD`).
 
-Po prijavi izvedemo začetno konfiguracijo:
+#### Ustvarjanje realma
 
-**Ustvarjanje realma**
+V Keycloakovi administracijski konzoli ustvarimo nov realm z imenom `EventFlow`.
 
-1. V razdelku za izbiro realma ustvarimo nov realm z imenom `EventFlow`.
-
-**Ustvarjanje uporabniških vlog**
+#### Ustvarjanje uporabniških vlog
 
 V razdelku **Realm roles** ustvarimo naslednje vloge:
 
@@ -102,7 +119,7 @@ V razdelku **Realm roles** ustvarimo naslednje vloge:
 
 Vlogo `PARTICIPANT` dodamo med privzete vloge (`default-roles-eventflow`), da jo prejmejo novi registrirani uporabniki.
 
-**Omogočanje registracije**
+#### Omogočanje registracije
 
 V razdelku **Realm settings → Login** omogočimo:
 
@@ -110,9 +127,19 @@ V razdelku **Realm settings → Login** omogočimo:
 - Email as username
 - Forgot password
 
-**Ustvarjanje clienta**
+#### Nastavitev prijavne teme
 
-V razdelku **Clients** ustvarimo nov client:
+Projekt vsebuje lastno Keycloak temo `eventflow`, ki je shranjena v mapi:
+
+`keycloak/themes/eventflow/`
+
+Mapa s temami je priklopljena v Keycloakov Docker vsebnik.
+
+V Keycloaku odpremo **Realm settings → Themes** in pri možnosti **Login theme** izberemo `eventflow`. Spremembe shranimo.
+
+#### Ustvarjanje frontend clienta
+
+V razdelku **Clients** ustvarimo nov client z naslednjimi nastavitvami:
 
 - Client type: `OpenID Connect`
 - Client ID: `eventflow-frontend`
@@ -129,52 +156,77 @@ Nastavimo še naslove:
 - Valid post logout redirect URIs: `http://localhost:5173/*`
 - Web origins: `http://localhost:5173`
 
-S tem je osnovna konfiguracija Keycloaka pripravljena za povezavo z aplikacijo.
+Ta client uporablja frontend aplikacija za prijavo in registracijo uporabnikov.
 
-### 6. Ustavitev Docker storitev
+#### Ustvarjanje backend clienta
 
-Za ustavitev Docker storitev uporabimo:
+V razdelku **Clients** ustvarimo še drugi client:
+
+- Client type: `OpenID Connect`
+- Client ID: `eventflow-backend`
+- Client authentication: On
+- Service accounts roles: On
+- Standard flow: Off
+- Direct access grants: Off
+
+V zavihku **Credentials** pridobimo Client Secret in ga vpišemo v `backend/.env` kot vrednost `KEYCLOAK_BACKEND_CLIENT_SECRET`.
+
+Backend client uporablja aplikacija za strežniško upravljanje uporabnikov v Keycloaku. Njegovemu service accountu dodelimo potrebne pravice za upravljanje uporabnikov v razdelku **Service account roles**.
+
+### 6. Zagon backenda
+
+V terminalu se premaknemo v mapo `backend`:
+
+```bash
+cd backend
+```
+
+Namestimo potrebne pakete:
+
+```bash
+npm install
+```
+
+Zaženemo backend:
+
+```bash
+npm run dev
+```
+
+Backend je dostopen na naslovu:
+
+[http://localhost:3000](http://localhost:3000)
+
+### 7. Zagon frontenda
+
+V novem terminalu se premaknemo v mapo `frontend`:
+
+```bash
+cd frontend
+```
+
+Namestimo potrebne pakete:
+
+```bash
+npm install
+```
+
+Zaženemo frontend:
+
+```bash
+npm run dev
+```
+
+React aplikacija je dostopna na naslovu:
+
+[http://localhost:5173](http://localhost:5173)
+
+### 8. Ustavitev Docker storitev
+
+Za ustavitev Docker storitev v korenski mapi projekta uporabimo:
 
 ```bash
 docker compose down
 ```
 
 Podatki v Docker volumnih se pri tem ohranijo.
-
-## Razvoj aplikacije
-
-Frontend in backend se razvijata ločeno.
-
-**Frontend:**
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-React aplikacija je dostopna na naslovu:
-
-http://localhost:5173
-
-**Backend:**
-
-Pred prvim zagonom v mapi `backend` ustvarimo datoteko `.env` iz predloge:
-
-\```bash
-cd backend
-cp .env.example .env
-\```
-
-Datoteka vsebuje naslov Keycloak realma, ki ga backend uporablja za preverjanje JWT žetonov.
-
-Backend zaženemo z ukazoma:
-
-```bash
-npm install
-npm run dev
-```
-
-Backend je dostopen na naslovu:
-
-http://localhost:3000
