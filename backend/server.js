@@ -557,6 +557,102 @@ app.post(
   }
 );
 
+app.patch(
+  "/api/events/:id/cancel-registration",
+  authenticateToken,
+  requireRole("PARTICIPANT"),
+  async (req, res) => {
+    const eventId = Number(req.params.id);
+    const userId = req.user.id;
+
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return res.status(400).json({
+        message: "Neveljaven ID dogodka."
+      });
+    }
+
+    const client = await pool.connect();
+    let transactionStarted = false;
+
+    try {
+      await client.query("BEGIN");
+      transactionStarted = true;
+
+      // Zaklenemo dogodek, da preprečimo težave
+      // pri sočasni prijavi in odpovedi.
+      const eventResult = await client.query(
+        `SELECT id
+         FROM events
+         WHERE id = $1
+         FOR UPDATE`,
+        [eventId]
+      );
+
+      if (eventResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          message: "Dogodek ne obstaja."
+        });
+      }
+
+      // Poiščemo aktivno prijavo trenutnega uporabnika.
+      const registrationResult = await client.query(
+        `SELECT id, status
+         FROM registrations
+         WHERE event_id = $1
+           AND user_keycloak_id = $2
+           AND status IN ('CONFIRMED', 'WAITLISTED')
+         FOR UPDATE`,
+        [eventId, userId]
+      );
+
+      if (registrationResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          message: "Na ta dogodek nimate aktivne prijave."
+        });
+      }
+
+      const registration = registrationResult.rows[0];
+
+      const result = await client.query(
+        `UPDATE registrations
+         SET status = 'CANCELLED'
+         WHERE id = $1
+         RETURNING *`,
+        [registration.id]
+      );
+
+      await client.query("COMMIT");
+      transactionStarted = false;
+
+      return res.status(200).json({
+        message:
+          registration.status === "CONFIRMED"
+            ? "Prijava je bila uspešno odpovedana. Mesto je sproščeno."
+            : "Prijava na čakalni listi je bila uspešno odpovedana.",
+        registration: result.rows[0]
+      });
+    } catch (error) {
+      if (transactionStarted) {
+        await client.query("ROLLBACK");
+      }
+
+      console.error("Napaka pri odpovedi prijave:", error);
+
+      return res.status(500).json({
+        message: "Pri odpovedi prijave je prišlo do napake."
+      });
+    } finally {
+      client.release();
+    }
+  }
+);
+
 app.get(
   "/api/events/my",
   authenticateToken,
