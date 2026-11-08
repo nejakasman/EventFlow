@@ -409,6 +409,79 @@ app.get(
   }
 );
 
+
+
+app.get("/api/events", async (req, res) => {
+  const { search, categoryId, date } = req.query;
+
+  const conditions = ["events.status = 'PUBLISHED'"];
+  const values = [];
+
+  if (search && search.trim()) {
+    values.push(`%${search.trim()}%`);
+    conditions.push(`events.title ILIKE $${values.length}`);
+  }
+
+  if (categoryId) {
+    const category = Number(categoryId);
+
+    if (!Number.isInteger(category) || category <= 0) {
+      return res.status(400).json({
+        message: "Neveljavna kategorija."
+      });
+    }
+
+    values.push(category);
+    conditions.push(`events.category_id = $${values.length}`);
+  }
+
+  if (date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({
+        message: "Neveljaven datum."
+      });
+    }
+
+    values.push(date);
+    conditions.push(`events.start_date::date = $${values.length}::date`);
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT
+        events.id,
+        events.title,
+        events.description,
+        events.location,
+        events.start_date,
+        events.end_date,
+        events.registration_deadline,
+        events.max_participants,
+        events.category_id,
+        categories.name AS category_name,
+        organizations.name AS organization_name
+      FROM events
+      JOIN categories ON events.category_id = categories.id
+      JOIN organizations
+        ON events.organization_keycloak_id = organizations.keycloak_id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY events.start_date ASC`,
+      values
+    );
+
+    return res.status(200).json({
+      events: result.rows
+    });
+  } catch (error) {
+    console.error("Napaka pri pridobivanju objavljenih dogodkov:", error);
+
+    return res.status(500).json({
+      message: "Pri pridobivanju dogodkov je prišlo do napake."
+    });
+  }
+});
+
+
 app.patch(
   "/api/events/:id/publish",
   authenticateToken,

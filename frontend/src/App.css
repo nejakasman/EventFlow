@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -567,7 +568,7 @@ a {
   margin: 22px auto 0;
 }
 
-/* Funkcionalnosti */
+/* Funkcionalnosti na začetni strani */
 
 .features {
   position: relative;
@@ -620,6 +621,15 @@ a {
 .feature-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 20px 45px rgba(64, 48, 112, 0.1);
+}
+
+.feature-card-clickable {
+  cursor: pointer;
+}
+
+.feature-card-clickable:focus-visible {
+  outline: 3px solid #9279ec;
+  outline-offset: 4px;
 }
 
 .feature-card-highlight {
@@ -691,149 +701,7 @@ a {
   font-size: 16px;
 }
 
-/* Prilagoditev zaslonom */
-
-@media (max-width: 950px) {
-  .navbar {
-    padding: 22px 30px;
-  }
-
-  .hero {
-    min-height: 720px;
-    padding: 145px 25px 85px;
-  }
-
-  .features {
-    padding: 65px 30px 70px;
-  }
-
-  .feature-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .footer {
-    margin: 0 30px;
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
-
-@media (max-width: 600px) {
-  .navbar {
-    padding: 17px 20px;
-    flex-wrap: wrap;
-  }
-
-  .nav-links {
-    display: none;
-  }
-
-  .nav-actions {
-    gap: 5px;
-  }
-
-  .nav-user {
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .button {
-    padding: 10px 12px;
-    font-size: 12px;
-  }
-
-  .hero {
-    min-height: 700px;
-    padding: 135px 20px 70px;
-  }
-
-  .hero-background-image {
-    object-position: center;
-  }
-
-  .hero h1 {
-    font-size: 46px;
-    letter-spacing: -2.7px;
-  }
-
-  .hero-description {
-    font-size: 14px;
-  }
-
-  .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .hero-bottom-note {
-    gap: 10px;
-    font-size: 10px;
-  }
-
-  .hero-bottom-note span {
-    width: 22px;
-  }
-
-  .registration-panel {
-    padding: 18px;
-  }
-
-  .registration-panel h1 {
-    font-size: 38px;
-  }
-
-  .account-choice-grid {
-    grid-template-columns: 1fr;
-    max-width: 300px;
-  }
-
-  .account-choice {
-    min-height: 150px;
-  }
-
-  .event-form-panel {
-    padding: 18px;
-  }
-
-  .event-form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .event-field-full {
-    grid-column: auto;
-  }
-
-  .features {
-    margin-top: 0;
-    padding: 55px 20px 55px;
-  }
-
-  .section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .section-heading h2 {
-    font-size: 29px;
-  }
-
-  .feature-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .feature-card {
-    min-height: 185px;
-  }
-
-  .footer {
-    margin: 0 20px;
-    padding: 22px 0 30px;
-    flex-wrap: wrap;
-  }
-}
-
-/* MOJI DOGODKI */
+/* Moji dogodki */
 
 .hero-my-events {
   min-height: auto;
@@ -1007,6 +875,532 @@ a {
   margin-top: 30px;
 }
 
+/* Pregled dogodkov */
+
+.navbar-light {
+  position: relative;
+  max-width: none;
+  padding: 20px max(35px, calc((100% - 1240px) / 2));
+  background: #ffffff;
+  color: #29243a;
+  border-bottom: 1px solid #eeecf2;
+}
+
+.navbar-light .nav-links {
+  color: #777586;
+}
+
+.navbar-light .nav-links a:hover {
+  color: #7457e8;
+}
+
+.navbar-light .nav-user {
+  color: #29243a;
+}
+
+.navbar-light .button-outline {
+  color: #7457e8;
+  border-color: #d8d0f3;
+  background: #ffffff;
+}
+
+.navbar-light .button-outline:hover {
+  background: #f5f1ff;
+}
+
+.navbar-light .button-text {
+  color: #7457e8;
+}
+
+.hero-discover {
+  min-height: auto;
+  display: block;
+  padding: 0 30px 85px;
+  background: #fbfaff;
+  color: #20202c;
+  text-align: left;
+}
+
+.hero-discover .hero-background {
+  display: none;
+}
+
+.hero-discover .hero-content {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.discover-panel {
+  width: 100%;
+}
+
+.discover-heading {
+  padding: 65px 0 38px;
+  text-align: center;
+}
+
+.discover-heading .section-label {
+  color: #8065d8;
+}
+
+.discover-heading h1 {
+  max-width: 780px;
+  margin: 15px auto 15px;
+  color: #242332;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(38px, 5vw, 58px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -2.5px;
+  text-shadow: none;
+}
+
+.discover-heading h1 span {
+  color: #8065d8;
+}
+
+.discover-heading p {
+  max-width: 590px;
+  margin: 0 auto;
+  color: #858292;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+/* Kategorije s slikami */
+
+.discover-categories {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.category-tile {
+  position: relative;
+  min-width: 0;
+  height: 260px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 17px;
+  background: #30234b;
+  text-align: left;
+  isolation: isolate;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.category-tile:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 35px rgba(45, 29, 83, 0.2);
+}
+
+.category-tile img {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.category-tile:hover img {
+  transform: scale(1.07);
+}
+
+.category-tile-overlay {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 12, 38, 0.08) 0%,
+    rgba(20, 12, 38, 0.25) 35%,
+    rgba(20, 12, 38, 0.86) 100%
+  );
+}
+
+.category-tile-content {
+  position: absolute;
+  left: 20px;
+  right: 15px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: white;
+}
+
+.category-tile-content small {
+  color: #d4c7ff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.category-tile-content strong {
+  font-family: 'Manrope', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.category-tile-content > span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+}
+
+.category-tile-active {
+  outline: 3px solid #9279ec;
+  outline-offset: 3px;
+}
+
+/* Seznam dogodkov */
+
+.discover-events-section {
+  padding-top: 75px;
+}
+
+.discover-events-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 25px;
+  margin-bottom: 27px;
+}
+
+.discover-events-heading .section-label {
+  color: #8065d8;
+}
+
+.discover-events-heading h2 {
+  margin: 10px 0 7px;
+  color: #242332;
+  font-family: 'Manrope', sans-serif;
+  font-size: 34px;
+  letter-spacing: -1.5px;
+}
+
+.discover-events-heading p {
+  margin: 0;
+  color: #858292;
+  font-size: 14px;
+}
+
+.discover-event-count {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: 30px;
+  background: #f0ecfb;
+  color: #7457c8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Filtri */
+
+.discover-filters {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.5fr) minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
+  align-items: end;
+  gap: 13px;
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #eeecf2;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 8px 25px rgba(50, 28, 100, 0.04);
+}
+
+.discover-search,
+.discover-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.discover-search label,
+.discover-filter label {
+  color: #555264;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.discover-search input,
+.discover-filter input,
+.discover-filter select {
+  width: 100%;
+  min-width: 0;
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid #e7e4ee;
+  border-radius: 9px;
+  outline: none;
+  background: #ffffff;
+  color: #29243a;
+  font-size: 12px;
+}
+
+.discover-search input:focus,
+.discover-filter input:focus,
+.discover-filter select:focus {
+  border-color: #9279ec;
+  box-shadow: 0 0 0 3px rgba(116, 87, 232, 0.1);
+}
+
+.discover-search input::placeholder {
+  color: #aaa6b4;
+}
+
+.discover-filter-button {
+  height: 43px;
+  white-space: nowrap;
+}
+
+.discover-reset-button {
+  height: 43px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: #8065d8;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.discover-reset-button:hover {
+  color: #5438b5;
+}
+
+/* Kartice dogodkov */
+
+.discover-event-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.discover-event-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #eeecf2;
+  border-radius: 17px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(50, 28, 100, 0.05);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.discover-event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 17px 38px rgba(50, 28, 100, 0.1);
+}
+
+.discover-event-image {
+  position: relative;
+  height: 190px;
+  overflow: hidden;
+  background: #eeeaf8;
+}
+
+.discover-event-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.discover-event-card:hover .discover-event-image img {
+  transform: scale(1.05);
+}
+
+.discover-event-category {
+  position: absolute;
+  left: 15px;
+  bottom: 14px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 30px;
+  background: rgba(35, 23, 63, 0.72);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.discover-event-content {
+  padding: 20px;
+}
+
+.discover-event-date {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8065d8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.discover-event-date span {
+  font-size: 15px;
+}
+
+.discover-event-content h3 {
+  margin: 12px 0 9px;
+  color: #29243a;
+  font-family: 'Manrope', sans-serif;
+  font-size: 19px;
+  line-height: 1.35;
+}
+
+.discover-event-description {
+  min-height: 43px;
+  margin: 0 0 17px;
+  color: #858292;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.discover-event-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid #f0eef4;
+  color: #686575;
+  font-size: 11px;
+}
+
+.discover-event-info span {
+  overflow-wrap: anywhere;
+}
+
+.discover-event-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 13px;
+  border-top: 1px solid #f0eef4;
+  color: #9895a2;
+  font-size: 10px;
+}
+
+.discover-event-arrow {
+  color: #8065d8;
+  font-size: 20px;
+}
+
+/* Prazni rezultati in nalaganje */
+
+.discover-message {
+  padding: 45px 20px;
+  color: #858292;
+  text-align: center;
+  font-size: 14px;
+}
+
+.discover-empty {
+  padding: 55px 20px;
+  border: 1px solid #eeecf2;
+  border-radius: 17px;
+  background: white;
+  text-align: center;
+}
+
+.discover-empty-icon {
+  width: 55px;
+  height: 55px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+  border-radius: 16px;
+  background: #f1edff;
+  color: #8065d8;
+  font-size: 28px;
+}
+
+.discover-empty h3 {
+  margin: 0 0 9px;
+  color: #29243a;
+  font-family: 'Manrope', sans-serif;
+  font-size: 20px;
+}
+
+.discover-empty p {
+  margin: 0 0 20px;
+  color: #858292;
+  font-size: 13px;
+}
+
+.discover-empty-button {
+  color: #7457e8;
+  border-color: #d8d0f3;
+  background: white;
+}
+
+.discover-empty-button:hover {
+  background: #f5f1ff;
+}
+
+.discover-back-link {
+  display: block;
+  margin: 35px auto 0;
+  color: #8065d8;
+}
+
+.discover-back-link:hover {
+  color: #5438b5;
+}
+
+/* Prilagoditev zaslonom */
+
+@media (max-width: 1050px) {
+  .discover-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .discover-event-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .discover-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .discover-filter-button,
+  .discover-reset-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 950px) {
+  .navbar {
+    padding: 22px 30px;
+  }
+
+  .hero {
+    min-height: 720px;
+    padding: 145px 25px 85px;
+  }
+
+  .features {
+    padding: 65px 30px 70px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer {
+    margin: 0 30px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 @media (max-width: 800px) {
   .my-events-list {
     grid-template-columns: 1fr;
@@ -1015,9 +1409,141 @@ a {
   .hero-my-events {
     padding: 50px 0 60px;
   }
+
+  .discover-events-heading {
+    align-items: flex-start;
+  }
+
+  .navbar-light {
+    padding: 18px 25px;
+  }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 600px) {
+  .navbar {
+    padding: 17px 20px;
+    flex-wrap: wrap;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .nav-actions {
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .nav-user {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .button {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .navbar-light {
+    position: relative;
+    padding: 15px 18px;
+  }
+
+  .navbar-light .brand {
+    font-size: 18px;
+  }
+
+  .hero {
+    min-height: 700px;
+    padding: 135px 20px 70px;
+  }
+
+  .hero-background-image {
+    object-position: center;
+  }
+
+  .hero h1 {
+    font-size: 46px;
+    letter-spacing: -2.7px;
+  }
+
+  .hero-description {
+    font-size: 14px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-bottom-note {
+    gap: 10px;
+    font-size: 10px;
+  }
+
+  .hero-bottom-note span {
+    width: 22px;
+  }
+
+  .registration-panel {
+    padding: 18px;
+  }
+
+  .registration-panel h1 {
+    font-size: 38px;
+  }
+
+  .account-choice-grid {
+    grid-template-columns: 1fr;
+    max-width: 300px;
+  }
+
+  .account-choice {
+    min-height: 150px;
+  }
+
+  .event-form-panel {
+    padding: 18px;
+  }
+
+  .event-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-field-full {
+    grid-column: auto;
+  }
+
+  .features {
+    margin-top: 0;
+    padding: 55px 20px 55px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-heading h2 {
+    font-size: 29px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card {
+    min-height: 185px;
+  }
+
+  .footer {
+    margin: 0 20px;
+    padding: 22px 0 30px;
+    flex-wrap: wrap;
+  }
+
   .my-event-details {
     grid-template-columns: 1fr;
   }
@@ -1028,5 +1554,81 @@ a {
 
   .my-event-card-top {
     align-items: flex-start;
+  }
+
+  .hero-discover {
+    padding: 0 18px 55px;
+  }
+
+  .discover-heading {
+    padding: 45px 0 30px;
+  }
+
+  .discover-heading h1 {
+    font-size: 37px;
+    letter-spacing: -1.8px;
+  }
+
+  .discover-heading p {
+    font-size: 13px;
+  }
+
+  .discover-categories {
+    grid-template-columns: 1fr 1fr;
+    gap: 11px;
+  }
+
+  .category-tile {
+    height: 190px;
+    border-radius: 13px;
+  }
+
+  .category-tile-content {
+    left: 12px;
+    right: 10px;
+    bottom: 13px;
+    gap: 6px;
+  }
+
+  .category-tile-content small {
+    font-size: 8px;
+  }
+
+  .category-tile-content strong {
+    font-size: 17px;
+  }
+
+  .category-tile-content > span {
+    font-size: 9px;
+  }
+
+  .discover-events-section {
+    padding-top: 50px;
+  }
+
+  .discover-events-heading {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .discover-events-heading h2 {
+    font-size: 28px;
+  }
+
+  .discover-filters {
+    grid-template-columns: 1fr;
+    padding: 15px;
+  }
+
+  .discover-event-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discover-event-image {
+    height: 210px;
+  }
+
+  .discover-event-count {
+    align-self: flex-start;
   }
 }

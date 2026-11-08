@@ -1,3 +1,4 @@
+
 import keycloak from './keycloak'
 import './App.css'
 import React, { useEffect, useState } from 'react'
@@ -37,6 +38,13 @@ function App() {
   const [eventsMessage, setEventsMessage] = useState('')
   const [eventsError, setEventsError] = useState(false)
   const [publishingEventId, setPublishingEventId] = useState(null)
+
+  const [publicEvents, setPublicEvents] = useState([])
+  const [publicEventsLoading, setPublicEventsLoading] = useState(false)
+  const [publicEventsError, setPublicEventsError] = useState('')
+  const [eventSearch, setEventSearch] = useState('')
+  const [eventCategoryFilter, setEventCategoryFilter] = useState('')
+  const [eventDateFilter, setEventDateFilter] = useState('')
 
   const user = keycloak.tokenParsed
 
@@ -250,6 +258,7 @@ function App() {
     setOrganizerView('myEvents')
     setRegistrationView('closed')
     loadMyEvents()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handlePublishEvent = async (eventId) => {
@@ -291,6 +300,74 @@ function App() {
     }
   }
 
+  const loadPublicEvents = async (filters = {}) => {
+    setPublicEventsLoading(true)
+    setPublicEventsError('')
+
+    const params = new URLSearchParams()
+
+    if (filters.search?.trim()) {
+      params.set('search', filters.search.trim())
+    }
+
+    if (filters.categoryId) {
+      params.set('categoryId', filters.categoryId)
+    }
+
+    if (filters.date) {
+      params.set('date', filters.date)
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events?${params.toString()}`
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Dogodkov ni bilo mogoče naložiti.')
+      }
+
+      setPublicEvents(data.events || [])
+    } catch (error) {
+      setPublicEventsError(error.message)
+    } finally {
+      setPublicEventsLoading(false)
+    }
+  }
+
+  const handleOpenDiscover = (categoryId = '') => {
+    setOrganizerView('discover')
+    setRegistrationView('closed')
+    setEventSearch('')
+    setEventCategoryFilter(categoryId)
+    setEventDateFilter('')
+
+    loadPublicEvents({
+      categoryId
+    })
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleApplyEventFilters = (event) => {
+    event.preventDefault()
+
+    loadPublicEvents({
+      search: eventSearch,
+      categoryId: eventCategoryFilter,
+      date: eventDateFilter
+    })
+  }
+
+  const handleResetEventFilters = () => {
+    setEventSearch('')
+    setEventCategoryFilter('')
+    setEventDateFilter('')
+    loadPublicEvents()
+  }
+
   const formatDate = (date) => {
     if (!date) return ''
 
@@ -309,15 +386,29 @@ function App() {
     })
   }
 
+  const eventImages = {
+    1: '/images/events/koncerti.jpg',
+    2: '/images/events/sport.jpg',
+    3: '/images/events/izobrazevanje.jpg',
+    4: '/images/events/kultura.jpg',
+    5: '/images/events/kultura.jpg'
+  }
+
   return (
     <div className="app-shell">
-      <header className="navbar">
+      <header
+        className={`navbar ${
+          organizerView === 'discover' ? 'navbar-light' : ''
+        }`}
+      >
         <a
           href="#"
           className="brand"
-          onClick={() => {
+          onClick={(event) => {
+            event.preventDefault()
             setOrganizerView('home')
             setRegistrationView('closed')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         >
           <span className="brand-icon">E</span>
@@ -330,6 +421,17 @@ function App() {
         </nav>
 
         <div className="nav-actions">
+          <button
+            className={`button ${
+              organizerView === 'discover'
+                ? 'button-primary'
+                : 'button-outline'
+            }`}
+            onClick={() => handleOpenDiscover()}
+          >
+            Odkrij dogodke
+          </button>
+
           {isAuthenticated ? (
             <>
               {isOrganizer && (
@@ -356,6 +458,7 @@ function App() {
                       setRegistrationView('closed')
                       setEventMessage('')
                       setEventError(false)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
                     Ustvari dogodek
@@ -397,10 +500,17 @@ function App() {
           className={`hero ${
             registrationView !== 'closed' ||
             organizerView === 'create' ||
-            organizerView === 'myEvents'
+            organizerView === 'myEvents' ||
+            organizerView === 'discover'
               ? 'hero-registration'
               : ''
-          } ${organizerView === 'myEvents' ? 'hero-my-events' : ''}`}
+          } ${
+            organizerView === 'myEvents'
+              ? 'hero-my-events'
+              : organizerView === 'discover'
+                ? 'hero-discover'
+                : ''
+          }`}
           id="about"
         >
           <div className="hero-background">
@@ -414,7 +524,278 @@ function App() {
           </div>
 
           <div className="hero-content">
-            {organizerView === 'myEvents' && isOrganizer ? (
+            {organizerView === 'discover' ? (
+              <div className="discover-panel">
+                <div className="discover-heading">
+                  <span className="section-label">RAZIŠČI EVENTFLOW</span>
+
+                  <h1>
+                    Odkrij svoje naslednje <span>doživetje.</span>
+                  </h1>
+
+                  <p>
+                    Koncerti, šport, kultura in še veliko več.
+                    Poišči dogodek, ki ti je pisan na kožo.
+                  </p>
+                </div>
+
+                <div className="discover-categories">
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '1'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('1')}
+                  >
+                    <img
+                      src="/images/events/koncerti.jpg"
+                      alt="Koncerti"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>01 / GLASBA</small>
+                      <strong>Koncerti</strong>
+                      <span>Odkrij glasbena doživetja →</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '2'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('2')}
+                  >
+                    <img
+                      src="/images/events/sport.jpg"
+                      alt="Šport"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>02 / AKTIVNOST</small>
+                      <strong>Šport</strong>
+                      <span>Najdi svojo naslednjo aktivnost →</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '3'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('3')}
+                  >
+                    <img
+                      src="/images/events/izobrazevanje.jpg"
+                      alt="Izobraževanje"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>03 / ZNANJE</small>
+                      <strong>Izobraževanje</strong>
+                      <span>Nauči se nekaj novega →</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`category-tile ${
+                      eventCategoryFilter === '4'
+                        ? 'category-tile-active'
+                        : ''
+                    }`}
+                    onClick={() => handleOpenDiscover('4')}
+                  >
+                    <img
+                      src="/images/events/kultura.jpg"
+                      alt="Kultura"
+                    />
+                    <span className="category-tile-overlay"></span>
+                    <span className="category-tile-content">
+                      <small>04 / UMETNOST</small>
+                      <strong>Kultura</strong>
+                      <span>Doživi nekaj drugačnega →</span>
+                    </span>
+                  </button>
+                </div>
+
+                <div className="discover-events-section">
+                  <div className="discover-events-heading">
+                    <div>
+                      <span className="section-label">
+                        TVOJ NASLEDNJI DOGODEK
+                      </span>
+                      <h2>Razišči dogodke.</h2>
+                      <p>
+                        Izberi, kaj te zanima, in poišči nekaj zase.
+                      </p>
+                    </div>
+
+                    <span className="discover-event-count">
+                      {publicEvents.length}{' '}
+                      {publicEvents.length === 1
+                        ? 'dogodek'
+                        : publicEvents.length === 2
+                          ? 'dogodka'
+                          : 'dogodkov'}
+                    </span>
+                  </div>
+
+                  <form
+                    className="discover-filters"
+                    onSubmit={handleApplyEventFilters}
+                  >
+                    <div className="discover-search">
+                      <label htmlFor="event-search">
+                        Išči dogodek
+                      </label>
+                      <input
+                        id="event-search"
+                        type="text"
+                        placeholder="Npr. Poletni glasbeni večer ..."
+                        value={eventSearch}
+                        onChange={(event) =>
+                          setEventSearch(event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="discover-filter">
+                      <label htmlFor="event-category-filter">
+                        Kategorija
+                      </label>
+                      <select
+                        id="event-category-filter"
+                        value={eventCategoryFilter}
+                        onChange={(event) =>
+                          setEventCategoryFilter(event.target.value)
+                        }
+                      >
+                        <option value="">Vse kategorije</option>
+                        <option value="1">Koncerti</option>
+                        <option value="2">Šport</option>
+                        <option value="3">Izobraževanje</option>
+                        <option value="4">Kultura</option>
+                        <option value="5">Drugo</option>
+                      </select>
+                    </div>
+
+                    <div className="discover-filter">
+                      <label htmlFor="event-date-filter">
+                        Datum dogodka
+                      </label>
+                      <input
+                        id="event-date-filter"
+                        type="date"
+                        value={eventDateFilter}
+                        onChange={(event) =>
+                          setEventDateFilter(event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <button
+                      className="button button-primary discover-filter-button"
+                      type="submit"
+                    >
+                      Išči dogodke
+                    </button>
+
+                    <button
+                      className="discover-reset-button"
+                      type="button"
+                      onClick={handleResetEventFilters}
+                    >
+                      Ponastavi
+                    </button>
+                  </form>
+
+                  {publicEventsLoading ? (
+                    <div className="discover-message">
+                      Nalaganje dogodkov ...
+                    </div>
+                  ) : publicEventsError ? (
+                    <div className="form-message form-error">
+                      {publicEventsError}
+                    </div>
+                  ) : publicEvents.length === 0 ? (
+                    <div className="discover-empty">
+                      <div className="discover-empty-icon">⌕</div>
+                      <h3>Trenutno ni dogodkov.</h3>
+                      <p>
+                        Poskusi spremeniti iskalne pogoje ali preveri
+                        ponovno pozneje.
+                      </p>
+                      <button
+                        className="button button-outline discover-empty-button"
+                        onClick={handleResetEventFilters}
+                      >
+                        Prikaži vse dogodke
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="discover-event-grid">
+                      {publicEvents.map(event => (
+                        <article
+                          className="discover-event-card"
+                          key={event.id}
+                        >
+                          <div className="discover-event-image">
+                            <img
+                              src={
+                                eventImages[event.category_id] ||
+                                eventImages[5]
+                              }
+                              alt={event.category_name}
+                            />
+                            <span className="discover-event-category">
+                              {event.category_name}
+                            </span>
+                          </div>
+
+                          <div className="discover-event-content">
+                            <div className="discover-event-date">
+                              <span>◷</span>
+                              {formatDate(event.start_date)}
+                            </div>
+
+                            <h3>{event.title}</h3>
+
+                            <p className="discover-event-description">
+                              {event.description ||
+                                'Več informacij o dogodku kmalu.'}
+                            </p>
+
+                            <div className="discover-event-info">
+                              <span>⌖ {event.location}</span>
+                              <span>✳ {event.organization_name}</span>
+                            </div>
+
+                            <div className="discover-event-bottom">
+                              <span>
+                                Do {event.max_participants} udeležencev
+                              </span>
+                              <span className="discover-event-arrow">
+                                →
+                              </span>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  className="back-link discover-back-link"
+                  onClick={() => setOrganizerView('home')}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
+            ) : organizerView === 'myEvents' && isOrganizer ? (
               <div className="my-events-panel">
                 <span className="section-label">ORGANIZACIJA</span>
 
@@ -937,7 +1318,18 @@ function App() {
             </div>
 
             <div className="feature-grid">
-              <article className="feature-card">
+              <article
+                className="feature-card feature-card-clickable"
+                onClick={() => handleOpenDiscover()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    handleOpenDiscover()
+                  }
+                }}
+              >
                 <span className="feature-number">01</span>
                 <div className="feature-icon">⌕</div>
                 <h3>Odkrij dogodke</h3>
@@ -976,7 +1368,10 @@ function App() {
           <a
             href="#"
             className="brand footer-brand"
-            onClick={() => setOrganizerView('home')}
+            onClick={(event) => {
+              event.preventDefault()
+              setOrganizerView('home')
+            }}
           >
             <span className="brand-icon">E</span>
             <span>eventflow</span>
