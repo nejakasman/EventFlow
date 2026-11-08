@@ -832,3 +832,201 @@ a {
     flex-wrap: wrap;
   }
 }
+
+/* MOJI DOGODKI */
+
+.hero-my-events {
+  min-height: auto;
+  background: #faf9fc;
+  padding: 75px 0 85px;
+}
+
+.hero-my-events .hero-background {
+  display: none;
+}
+
+.hero-my-events .hero-content {
+  width: min(1100px, calc(100% - 48px));
+  max-width: 1100px;
+  margin: 0 auto;
+  color: #20202c;
+}
+
+.my-events-panel {
+  width: 100%;
+}
+
+.my-events-panel h1 {
+  color: #20202c;
+  margin: 12px 0;
+}
+
+.my-events-panel h1 span {
+  color: #8065d8;
+}
+
+.my-events-panel .form-description {
+  color: #777586;
+  max-width: 650px;
+  margin-bottom: 35px;
+}
+
+.my-events-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 30px;
+}
+
+.my-event-card {
+  background: #ffffff;
+  border: 1px solid #eae8f0;
+  border-radius: 18px;
+  padding: 25px;
+  box-shadow: 0 8px 30px rgba(35, 25, 70, 0.04);
+}
+
+.my-event-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.my-event-category {
+  color: #8065d8;
+  background: #f1edfc;
+  padding: 7px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.event-status {
+  padding: 7px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.event-status-draft {
+  background: #fff3df;
+  color: #a66b17;
+}
+
+.event-status-published {
+  background: #e6f6ed;
+  color: #27834e;
+}
+
+.my-event-card h2 {
+  color: #242332;
+  font-family: 'Manrope', sans-serif;
+  font-size: 21px;
+  margin: 0 0 12px;
+}
+
+.my-event-description {
+  color: #777586;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 22px;
+}
+
+.my-event-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: 20px 0;
+  border-top: 1px solid #efedf3;
+  border-bottom: 1px solid #efedf3;
+}
+
+.my-event-details > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #383646;
+  font-size: 13px;
+}
+
+.event-detail-label {
+  color: #9693a2;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.publish-button {
+  margin-top: 20px;
+}
+
+.events-empty {
+  background: #ffffff;
+  border: 1px solid #eae8f0;
+  border-radius: 18px;
+  padding: 55px 25px;
+  text-align: center;
+  margin-top: 30px;
+}
+
+.events-empty-icon {
+  width: 55px;
+  height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  border-radius: 16px;
+  background: #f1edfc;
+  color: #8065d8;
+  font-size: 25px;
+}
+
+.events-empty h2 {
+  color: #242332;
+  font-family: 'Manrope', sans-serif;
+  font-size: 21px;
+  margin-bottom: 8px;
+}
+
+.events-empty p {
+  color: #858292;
+  font-size: 14px;
+  margin-bottom: 22px;
+}
+
+.events-info {
+  color: #777586;
+  padding: 30px 0;
+}
+
+.my-events-panel .back-link {
+  margin-top: 30px;
+}
+
+@media (max-width: 800px) {
+  .my-events-list {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-my-events {
+    padding: 50px 0 60px;
+  }
+}
+
+@media (max-width: 520px) {
+  .my-event-details {
+    grid-template-columns: 1fr;
+  }
+
+  .my-event-card {
+    padding: 20px;
+  }
+
+  .my-event-card-top {
+    align-items: flex-start;
+  }
+}

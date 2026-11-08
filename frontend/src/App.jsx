@@ -32,6 +32,12 @@ function App() {
   const [eventMessage, setEventMessage] = useState('')
   const [eventError, setEventError] = useState(false)
 
+  const [myEvents, setMyEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [eventsMessage, setEventsMessage] = useState('')
+  const [eventsError, setEventsError] = useState(false)
+  const [publishingEventId, setPublishingEventId] = useState(null)
+
   const user = keycloak.tokenParsed
 
   const userRoles = user?.realm_access?.roles || []
@@ -213,6 +219,90 @@ function App() {
     }
   }
 
+  const loadMyEvents = async () => {
+    setEventsLoading(true)
+    setEventsMessage('')
+    setEventsError(false)
+
+    try {
+      const response = await fetch('http://localhost:3000/api/events/my', {
+        headers: {
+          Authorization: `Bearer ${keycloak.token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Pridobivanje dogodkov ni uspelo.')
+      }
+
+      setMyEvents(data.events || [])
+    } catch (error) {
+      setEventsError(true)
+      setEventsMessage(error.message)
+    } finally {
+      setEventsLoading(false)
+    }
+  }
+
+  const handleOpenMyEvents = () => {
+    setOrganizerView('myEvents')
+    setRegistrationView('closed')
+    loadMyEvents()
+  }
+
+  const handlePublishEvent = async (eventId) => {
+    setPublishingEventId(eventId)
+    setEventsMessage('')
+    setEventsError(false)
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/events/${eventId}/publish`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Objava dogodka ni uspela.')
+      }
+
+      setMyEvents(previous =>
+        previous.map(event =>
+          event.id === eventId
+            ? { ...event, status: 'PUBLISHED' }
+            : event
+        )
+      )
+
+      setEventsMessage('Dogodek je bil uspešno objavljen.')
+    } catch (error) {
+      setEventsError(true)
+      setEventsMessage(error.message)
+    } finally {
+      setPublishingEventId(null)
+    }
+  }
+
+  const formatDate = (date) => {
+    if (!date) return ''
+
+    return new Date(date).toLocaleString('sl-SI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   const handleLogout = () => {
     keycloak.logout({
       redirectUri: window.location.origin
@@ -243,17 +333,34 @@ function App() {
           {isAuthenticated ? (
             <>
               {isOrganizer && (
-                <button
-                  className="button button-outline"
-                  onClick={() => {
-                    setOrganizerView('create')
-                    setRegistrationView('closed')
-                    setEventMessage('')
-                    setEventError(false)
-                  }}
-                >
-                  Ustvari dogodek
-                </button>
+                <>
+                  <button
+                    className={`button ${
+                      organizerView === 'myEvents'
+                        ? 'button-primary'
+                        : 'button-outline'
+                    }`}
+                    onClick={handleOpenMyEvents}
+                  >
+                    Moji dogodki
+                  </button>
+
+                  <button
+                    className={`button ${
+                      organizerView === 'create'
+                        ? 'button-primary'
+                        : 'button-outline'
+                    }`}
+                    onClick={() => {
+                      setOrganizerView('create')
+                      setRegistrationView('closed')
+                      setEventMessage('')
+                      setEventError(false)
+                    }}
+                  >
+                    Ustvari dogodek
+                  </button>
+                </>
               )}
 
               <span className="nav-user">{userName}</span>
@@ -288,10 +395,12 @@ function App() {
       <main>
         <section
           className={`hero ${
-            registrationView !== 'closed' || organizerView === 'create'
+            registrationView !== 'closed' ||
+            organizerView === 'create' ||
+            organizerView === 'myEvents'
               ? 'hero-registration'
               : ''
-          }`}
+          } ${organizerView === 'myEvents' ? 'hero-my-events' : ''}`}
           id="about"
         >
           <div className="hero-background">
@@ -305,12 +414,143 @@ function App() {
           </div>
 
           <div className="hero-content">
-            <div className="eyebrow">
-              <span className="eyebrow-dot"></span>
-              TVOJ PROSTOR ZA DOGODKE
-            </div>
+            {organizerView === 'myEvents' && isOrganizer ? (
+              <div className="my-events-panel">
+                <span className="section-label">ORGANIZACIJA</span>
 
-            {isOrganizer && organizerView === 'create' ? (
+                <h1>
+                  Moji <span>dogodki.</span>
+                </h1>
+
+                <p className="form-description">
+                  Tukaj lahko spremljaš svoje ustvarjene dogodke in objaviš
+                  tiste, ki so pripravljeni.
+                </p>
+
+                {eventsMessage && (
+                  <div
+                    className={`form-message ${
+                      eventsError ? 'form-error' : 'form-success'
+                    }`}
+                  >
+                    {eventsMessage}
+                  </div>
+                )}
+
+                {eventsLoading ? (
+                  <div className="events-info">
+                    Nalaganje dogodkov ...
+                  </div>
+                ) : myEvents.length === 0 && !eventsError ? (
+                  <div className="events-empty">
+                    <div className="events-empty-icon">✳</div>
+                    <h2>Še nimaš dogodkov.</h2>
+                    <p>
+                      Ko ustvariš svoj prvi dogodek, se bo prikazal tukaj.
+                    </p>
+
+                    <button
+                      className="button button-primary"
+                      onClick={() => setOrganizerView('create')}
+                    >
+                      Ustvari dogodek
+                    </button>
+                  </div>
+                ) : (
+                  <div className="my-events-list">
+                    {myEvents.map(event => (
+                      <article className="my-event-card" key={event.id}>
+                        <div className="my-event-card-top">
+                          <span className="my-event-category">
+                            {event.category_name}
+                          </span>
+
+                          <span
+                            className={`event-status ${
+                              event.status === 'PUBLISHED'
+                                ? 'event-status-published'
+                                : 'event-status-draft'
+                            }`}
+                          >
+                            {event.status === 'PUBLISHED'
+                              ? 'Objavljeno'
+                              : event.status === 'DRAFT'
+                                ? 'Osnutek'
+                                : event.status}
+                          </span>
+                        </div>
+
+                        <h2>{event.title}</h2>
+
+                        {event.description && (
+                          <p className="my-event-description">
+                            {event.description}
+                          </p>
+                        )}
+
+                        <div className="my-event-details">
+                          <div>
+                            <span className="event-detail-label">
+                              Lokacija
+                            </span>
+                            <span>{event.location}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Začetek dogodka
+                            </span>
+                            <span>{formatDate(event.start_date)}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Konec dogodka
+                            </span>
+                            <span>{formatDate(event.end_date)}</span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Rok za prijavo
+                            </span>
+                            <span>
+                              {formatDate(event.registration_deadline)}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="event-detail-label">
+                              Največje število udeležencev
+                            </span>
+                            <span>{event.max_participants}</span>
+                          </div>
+                        </div>
+
+                        {event.status === 'DRAFT' && (
+                          <button
+                            className="button button-primary publish-button"
+                            onClick={() => handlePublishEvent(event.id)}
+                            disabled={publishingEventId === event.id}
+                          >
+                            {publishingEventId === event.id
+                              ? 'Objavljanje ...'
+                              : 'Objavi dogodek'}
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  className="back-link"
+                  onClick={() => setOrganizerView('home')}
+                >
+                  ← Nazaj na začetno stran
+                </button>
+              </div>
+            ) : isOrganizer && organizerView === 'create' ? (
               <div className="event-form-panel">
                 <span className="section-label">NOV DOGODEK</span>
 
@@ -493,6 +733,11 @@ function App() {
               </div>
             ) : registrationView === 'closed' ? (
               <>
+                <div className="eyebrow">
+                  <span className="eyebrow-dot"></span>
+                  TVOJ PROSTOR ZA DOGODKE
+                </div>
+
                 <h1>
                   Dogodki, ki<br />
                   <span>povezujejo.</span>

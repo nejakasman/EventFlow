@@ -379,6 +379,94 @@ app.post("/api/events", authenticateToken, requireRole("ORGANIZER"), async (req,
 );
 
 
+app.get(
+  "/api/events/my",
+  authenticateToken,
+  requireRole("ORGANIZER"),
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT
+          events.*,
+          categories.name AS category_name
+        FROM events
+        JOIN categories ON events.category_id = categories.id
+        WHERE events.organization_keycloak_id = $1
+        ORDER BY events.created_at DESC`,
+        [req.user.id]
+      );
+
+      return res.status(200).json({
+        events: result.rows
+      });
+    } catch (error) {
+      console.error("Napaka pri pridobivanju dogodkov:", error);
+
+      return res.status(500).json({
+        message: "Pri pridobivanju dogodkov je prišlo do napake."
+      });
+    }
+  }
+);
+
+app.patch(
+  "/api/events/:id/publish",
+  authenticateToken,
+  requireRole("ORGANIZER"),
+  async (req, res) => {
+    const eventId = Number(req.params.id);
+
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return res.status(400).json({
+        message: "Neveljaven ID dogodka."
+      });
+    }
+
+    try {
+      const existingEvent = await pool.query(
+        `SELECT id, status
+         FROM events
+         WHERE id = $1
+           AND organization_keycloak_id = $2`,
+        [eventId, req.user.id]
+      );
+
+      if (existingEvent.rows.length === 0) {
+        return res.status(404).json({
+          message: "Dogodek ne obstaja ali pa ga niste ustvarili vi."
+        });
+      }
+
+      if (existingEvent.rows[0].status !== "DRAFT") {
+        return res.status(409).json({
+          message: "Objaviti je mogoče samo osnutek dogodka."
+        });
+      }
+
+      const result = await pool.query(
+        `UPDATE events
+         SET status = 'PUBLISHED'
+         WHERE id = $1
+           AND organization_keycloak_id = $2
+           AND status = 'DRAFT'
+         RETURNING *`,
+        [eventId, req.user.id]
+      );
+
+      return res.status(200).json({
+        message: "Dogodek je bil uspešno objavljen.",
+        event: result.rows[0]
+      });
+    } catch (error) {
+      console.error("Napaka pri objavi dogodka:", error);
+
+      return res.status(500).json({
+        message: "Pri objavi dogodka je prišlo do napake."
+      });
+    }
+  }
+);
+
 
 app.listen(PORT, () => {
   console.log(`EventFlow backend deluje na portu ${PORT}`);
