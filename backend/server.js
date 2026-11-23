@@ -15,7 +15,6 @@ const {
 } = require("./keycloakAdmin");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const pool = require("./db");
 
 app.use(cors());
@@ -974,6 +973,11 @@ app.patch(
   }
 );
 
-app.listen(PORT, () => {
-  console.log(`EventFlow backend deluje na portu ${PORT}`);
-});
+if (require.main === module) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`EventFlow backend deluje na portu ${port}`);
+  });
+}
+
+module.exports = app;
